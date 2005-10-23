@@ -113,13 +113,14 @@ class MP3Client:
 		self.respond()
 		#self.output.write("Me: %s:%d\n" % (self.myhost, self.myport))
 		#self.output.write("You: %s:%d\n" % (self.yourhost, self.yourport))
-		music = MusicList()
 
 		try:
 			while 1:
-				song = music.find_randomsong()
+				song = stream.currentsong()
+				#song = music.find_randomsong()
 				print "%s: %s" % (self, song)
-				self.plug.sendfile(song[-1])
+				self.plug.sendfile(song)
+				stream.nextsong()
 		except socket.error:
 			print "SERVER: Client %s:%d disconnected or died" \
 				% (self.yourhost,self.yourport)
@@ -130,11 +131,23 @@ class MP3Client:
 
 class MP3Stream:
 	def __init__(self, request, name="Unknown Stream"):
+		self.music = MusicList()
 		self.clients = []
 		self.name = name
+		self.song = None
 
 	def addclient(self, client):
 		self.clients.append(client)
+
+	def currentsong(self):
+		if self.song is None:
+			self.nextsong()
+
+		return self.song
+
+	def nextsong(self):
+		song = self.music.find_randomsong()
+		self.song = song[-1]
 
 class Pimp:#{{{
 	def __init__(self):

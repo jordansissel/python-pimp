@@ -13,14 +13,27 @@ import sys
 import os
 import time
 
-MEDIAPATH = "/mnt/Audio"
+MEDIAPATH = "/mnt/Audio/MP3"
 
 eventqueue = Queue.Queue()
 streamlist = {}
 clientlist = []
 
+class Callable:
+	def __init__(self, anycallable):
+		self.__call__ = anycallable
+
 class MusicList:
 	needinit = 0
+	singleton_instance = None
+
+	def singleton():
+		if MusicList.singleton_instance is None:
+			MusicList.singleton_instance = MusicList()
+		return MusicList.singleton_instance
+
+	singleton = Callable(singleton)
+
 	def __init__(self):
 		self.dbpath = "%s/.pimpdb" % os.getenv("HOME")
 		if not os.path.isfile(self.dbpath):
@@ -38,19 +51,21 @@ class MusicList:
 		cur.execute("""
 			CREATE TABLE music (
 				songid INTEGER PRIMARY KEY,
-				artist TEXT(20),
-				album TEXT(20),
-				title TEXT(20),
-				genre TEXT(20),
-				filename TEXT(255)
+				artist TEXT,
+				album TEXT,
+				title TEXT,
+				genre TEXT,
+				filename TEXT
 			)
 		""")
 		cur.close()
 
 	def findmusic(self):
+		print "Finding music in %s" % MEDIAPATH
 		cur = self.db.cursor()
 		os.path.walk(MEDIAPATH, self._findmusic, cur)
 		cur.close()
+		self.db.commit()
 
 	def _findmusic(self, arg, dirname, fnames):
 		cur = arg
@@ -58,7 +73,16 @@ class MusicList:
 		songs = map(lambda x: "%s/%s" % (dirname, x), 
 						filter(lambda x: x[-4:] == ".mp3", fnames))
 		for s in songs:
-			cur.executemany("INSERT INTO music (filename) VALUES (?)", s)
+			cur.execute("INSERT INTO music (filename) VALUES (:song)", {"song":s})
+
+	def find_randomsong(self):
+		cur = self.db.cursor()
+		#cur.execute("SELECT filename FROM music LIMIT 
+		# XXX: Cache this...
+		cur.execute("SELECT count(*) FROM music")
+		rows = cur.fetchone()
+		print "ROWS: %d" % rows
+		cur.close()
 
 class MP3Client:
 	def __init__(self, request):
@@ -97,7 +121,7 @@ class MP3Client:
 
 		try:
 			while 1:
-				self.output.write("Hello\n");
+				music.find_randomsong()
 				time.sleep(1)
 		except socket.error:
 			print "SERVER: Client %s:%d disconnected or died" \
@@ -115,7 +139,6 @@ class MP3Stream:
 	def addclient(self, client):
 		self.clients.append(client)
 
-
 class Pimp:#{{{
 	def __init__(self):
 		self.server = ConnectionHandler()
@@ -130,6 +153,7 @@ class Pimp:#{{{
 		for a in self.threads:
 			a.join()
 #}}}
+
 class Plug:#{{{
 	def __init__(self,request):
 		self.request = request
@@ -275,4 +299,5 @@ class ConnectionHandler(Thread):#{{{
 if __name__ == '__main__':
 	#p = Pimp()
 	#p.start()
-	m = MusicList()
+	print MusicList.singleton()
+	print MusicList.singleton()

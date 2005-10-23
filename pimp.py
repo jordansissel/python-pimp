@@ -1,8 +1,10 @@
 #!/usr/local/bin/python
+# coding: iso-8859-1
 
 import SocketServer, BaseHTTPServer
 from threading import Thread,Event
 from pysqlite2 import dbapi2 as sqlite
+from pysqlite2 import _sqlite as _sqlite
 
 import Queue
 import re
@@ -12,6 +14,7 @@ import signal
 import sys
 import os
 import time
+import random
 
 MEDIAPATH = "/mnt/Audio/MP3"
 
@@ -19,27 +22,15 @@ eventqueue = Queue.Queue()
 streamlist = {}
 clientlist = []
 
-class Callable:
-	def __init__(self, anycallable):
-		self.__call__ = anycallable
-
 class MusicList:
 	needinit = 0
-	singleton_instance = None
-
-	def singleton():
-		if MusicList.singleton_instance is None:
-			MusicList.singleton_instance = MusicList()
-		return MusicList.singleton_instance
-
-	singleton = Callable(singleton)
 
 	def __init__(self):
 		self.dbpath = "%s/.pimpdb" % os.getenv("HOME")
 		if not os.path.isfile(self.dbpath):
 			self.needinit = 1
 
-		self.db = sqlite.connect(self.dbpath)
+		self.db = sqlite.connect(self.dbpath, detect_types=sqlite.PARSE_DECLTYPES)
 
 		if self.needinit:
 			self.initdb()
@@ -51,11 +42,11 @@ class MusicList:
 		cur.execute("""
 			CREATE TABLE music (
 				songid INTEGER PRIMARY KEY,
-				artist TEXT,
-				album TEXT,
-				title TEXT,
-				genre TEXT,
-				filename TEXT
+				artist VARCHAR,
+				album VARCHAR,
+				title VARCHAR,
+				genre VARCHAR,
+				filename VARCHAR
 			)
 		""")
 		cur.close()
@@ -77,26 +68,30 @@ class MusicList:
 
 	def find_randomsong(self):
 		cur = self.db.cursor()
-		#cur.execute("SELECT filename FROM music LIMIT 
-		# XXX: Cache this...
+		# XXX: Cache this.
 		cur.execute("SELECT count(*) FROM music")
 		rows = cur.fetchone()
-		print "ROWS: %d" % rows
+		row = random.randint(0, rows[0] - 1)
+		print "SELECT * FROM music LIMIT %d,1"%row
+		cur.execute(u"SELECT * FROM music LIMIT %d,1" %row)
+		song = cur.fetchone()
 		cur.close()
+		return song
 
 class MP3Client:
-	def __init__(self, request):
-		self.request = request
-		self.output = request.wfile
+	def __init__(self, plug):
+		self.plug = plug
+		self.request = plug.request
+		self.output = self.request.wfile
 		(self.myhost, self.myport) = self.request.request.getsockname()
 		(self.yourhost, self.yourport) = self.request.request.getpeername()
 		self.myhost = socket.gethostbyaddr(self.myhost)[0]
 		self.yourhost = socket.gethostbyaddr(self.yourhost)[0]
-		if streamlist.has_key(request.path):
-			self.stream = streamlist[request.path]
+		if streamlist.has_key(self.request.path):
+			self.stream = streamlist[self.request.path]
 		else:
-			self.stream = MP3Stream(request.path)
-			streamlist[request.path] = self.stream
+			self.stream = MP3Stream(self.request.path)
+			streamlist[self.request.path] = self.stream
 
 	def __str__(self):
 		return "%s:%d" % (self.yourhost, self.yourport)
@@ -116,13 +111,15 @@ class MP3Client:
 		print "New client: %s" % self
 		print map(lambda x: "%s" % x, clientlist)
 		self.respond()
-		self.output.write("Me: %s:%d\n" % (self.myhost, self.myport))
-		self.output.write("You: %s:%d\n" % (self.yourhost, self.yourport))
+		#self.output.write("Me: %s:%d\n" % (self.myhost, self.myport))
+		#self.output.write("You: %s:%d\n" % (self.yourhost, self.yourport))
+		music = MusicList()
 
 		try:
 			while 1:
-				music.find_randomsong()
-				time.sleep(1)
+				song = music.find_randomsong()
+				print "%s: %s" % (self, song)
+				self.plug.sendfile(song[-1])
 		except socket.error:
 			print "SERVER: Client %s:%d disconnected or died" \
 				% (self.yourhost,self.yourport)
@@ -197,7 +194,7 @@ class GenerateContentPlug(Plug):#{{{
 #}}}
 class StreamPlug(Plug):#{{{
 	def process(self):
-		client = MP3Client(self.request)
+		client = MP3Client(self)
 		client.broadcast()
 
 #}}}
@@ -296,8 +293,16 @@ class ConnectionHandler(Thread):#{{{
 				self.handlers['404'](self).process()
 #}}}
 
+def decode_string(val):
+	return unicode(val, "US-ASCII").decode("UTF-8")
+
+def adapt_string(val):
+	return unicode(val).encode("US-ASCII")
+
 if __name__ == '__main__':
-	#p = Pimp()
-	#p.start()
-	print MusicList.singleton()
-	print MusicList.singleton()
+	# Unicode sucks, use ASCII
+	sqlite.register_adapter(str, adapt_string)
+	sqlite.register_converter('VARCHAR', decode_string)
+	m = MusicList()
+	p = Pimp()
+	p.start()

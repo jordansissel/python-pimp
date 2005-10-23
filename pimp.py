@@ -4,7 +4,6 @@
 import SocketServer, BaseHTTPServer
 from threading import Thread,Event
 from pysqlite2 import dbapi2 as sqlite
-from pysqlite2 import _sqlite as _sqlite
 
 import Queue
 import re
@@ -111,16 +110,13 @@ class MP3Client:
 		print "New client: %s" % self
 		print map(lambda x: "%s" % x, clientlist)
 		self.respond()
-		#self.output.write("Me: %s:%d\n" % (self.myhost, self.myport))
-		#self.output.write("You: %s:%d\n" % (self.yourhost, self.yourport))
 
 		try:
 			while 1:
-				song = stream.currentsong()
-				#song = music.find_randomsong()
+				song = self.stream.currentsong()
 				print "%s: %s" % (self, song)
 				self.plug.sendfile(song)
-				stream.nextsong()
+				self.stream.nextsong()
 		except socket.error:
 			print "SERVER: Client %s:%d disconnected or died" \
 				% (self.yourhost,self.yourport)

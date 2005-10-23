@@ -13,6 +13,8 @@ import sys
 import os
 import time
 
+MEDIAPATH = "/mnt/Audio"
+
 eventqueue = Queue.Queue()
 streamlist = {}
 clientlist = []
@@ -45,17 +47,18 @@ class MusicList:
 		""")
 		cur.close()
 
-		
 	def findmusic(self):
 		cur = self.db.cursor()
-		os.path.walk("/mnt", self._findmusic, cur)
+		os.path.walk(MEDIAPATH, self._findmusic, cur)
 		cur.close()
 
-	def _findmusic(arg, dirname, fnames):
+	def _findmusic(self, arg, dirname, fnames):
 		cur = arg
 		print "Dir: %s" % dirname
-
-
+		songs = map(lambda x: "%s/%s" % (dirname, x), 
+						filter(lambda x: x[-4:] == ".mp3", fnames))
+		for s in songs:
+			cur.executemany("INSERT INTO music (filename) VALUES (?)", s)
 
 class MP3Client:
 	def __init__(self, request):

@@ -1,0 +1,10 @@
+
+
+Pimp ->
+	Listens on one port
+	GET /stream/streamname 
+		Creates/joins the stream 'streamname'
+	GET /
+		Present management interface
+	POST /control
+		Process XMLRPC

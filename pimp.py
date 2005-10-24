@@ -142,13 +142,22 @@ class MusicList:
 
 class MP3Client:
 	def __init__(self, plug):
+		self.music = MusicList()
 		self.plug = plug
 		self.request = plug.request
 		self.output = self.request.wfile
 		(self.myhost, self.myport) = self.request.request.getsockname()
 		(self.yourhost, self.yourport) = self.request.request.getpeername()
-		self.myhost = socket.gethostbyaddr(self.myhost)[0]
-		self.yourhost = socket.gethostbyaddr(self.yourhost)[0]
+		try:
+			self.myhost = socket.gethostbyaddr(self.myhost)[0]
+		except:
+			print "Failed host lookup for %s" % self.myhost
+
+		try:
+			self.yourhost = socket.gethostbyaddr(self.yourhost)[0]
+		except:
+			print "Failed host lookup for %s" % self.yourhost
+
 		if streamlist.has_key(self.request.path):
 			self.stream = streamlist[self.request.path]
 		else:
@@ -179,7 +188,7 @@ class MP3Client:
 				song = self.stream.currentsong()
 				print "%s: %s" % (self, song)
 				self.plug.sendfile(song)
-				self.stream.nextsong()
+				self.stream.nextsong(self.music)
 		except socket.error:
 			print "SERVER: Client %s:%d disconnected or died" \
 				% (self.yourhost,self.yourport)
@@ -200,12 +209,12 @@ class MP3Stream:
 
 	def currentsong(self):
 		if self.song is None:
-			self.nextsong()
+			self.nextsong(self.music)
 
 		return self.song
 
-	def nextsong(self):
-		song = self.music.find_randomsong()
+	def nextsong(self, music):
+		song = music.find_randomsong()
 		self.song = song[-1]
 
 class Pimp:#{{{

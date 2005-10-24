@@ -2,7 +2,7 @@
 <head>
 	<title>Happy control!</title>
 	<link rel="stylesheet" type="text/css" href="/content/style.css" />
-	<script src="/generate/streams.js" />
+	<script src="/content/vcXMLRPC.js" />
 	<script src="/content/pimp.js" />
 </head>
 <body>
@@ -12,7 +12,13 @@
 	</div>
 
 	<div class="content">
-		<h4 style="font-variant: small-caps">Choose your destiny:</h4>
+		<div id="streamlist-panel">
+			<h4 style="font-variant: small-caps">Choose your destiny:</h4>
+			<div id="streamlist" />
+		</div>
+		<div id="test" style="padding:3px;background-color:lightgrey;border:1px solid black">
+			Testing
+		</div>
 	</div>
 </body>
 </html>

@@ -22,18 +22,34 @@ streamlist = {}
 clientlist = []
 
 class RPC:
+	ofunc = None
 	def call(self, method, params, ofunc):
+		self.ofunc = ofunc
 		func = getattr(self, "call_%s" % method, self.invalidcall)
-		func(params, ofunc)
-
-	def call_control(self, params, ofunc):
+		func(params)
+	
+	def respond(self, args):
 		m = xmlrpclib.Marshaller()
-		print "%s: CONTROL" % self
-		print "Params: ", params
-		ofunc("<methodResponse>")
-		m.dump_struct({"Testing": "Foo bar baz"}, ofunc)
+		self.ofunc("<methodResponse>")
+		m.dump_struct(args, ofunc)
 		ofunc("</methodResponse>")
-		
+
+	def call_control(self, params):
+		print "CONTROL"
+		hash = {
+			"result": str(int(params[0]["p1"]) + int(params[0]["p2"]))
+		}
+		self.respond(hash)
+
+	def call_search(self, params):
+		print "SEARCH"
+		m = MusicList()
+		results = {}
+		query = params[0]["any"]
+		cur = m.cursor()
+		cur.execute("SELECT filename FROM music WHERE filename LIKE ?", "%%%s%%"%query)
+		print type(cur.fetchall())
+		self.respond(results)
 	
 	def invalidcall(self, params, ofunc):
 		print "Invalid call"
@@ -96,6 +112,9 @@ class MusicList:
 		song = cur.fetchone()
 		cur.close()
 		return song
+	
+	def search_anymatch(self, args):
+		pass
 
 class MP3Client:
 	def __init__(self, plug):

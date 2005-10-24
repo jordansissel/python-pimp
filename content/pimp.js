@@ -6,27 +6,30 @@ function loadfunc() {
 }
 
 function clickfunc() {
-	call_xmlrpc("control", {test: "foo"}, click_callback)
+	debug("Calling xmlrpc method with '12' and '15' as params")
+	call_xmlrpc("search", {any: "nightwish"}, click_callback)
 }
 
 function xmlrpc_callback() {
 	if (xmlrpc.readyState == 4) {
-		doc = xmlrpc.responseXML;
+		var doc = xmlrpc.responseXML;
 		if (doc.childNodes[0].tagName != "methodResponse") {
 			debug("UNEXPECTED NON-XMLRPC RESPONSE FROM SERVER");
 			return;
 		}
 
-		debug(xmlrpc.responseText)
-		hash = rpcparam2hash(doc.childNodes[0])
-		debug("Hash: " + hash)
+		//debug(xmlrpc.responseText)
+		var hash = rpcparam2hash(doc.childNodes[0])
+		Object.dpDump(hash)
 
 		xmlrpc.mycallback(hash)
 	}
 }
 
 function click_callback(params) {
-	debug(params)
+	for (var i in params[0]) {
+		debug("params[0]["+i+"] = "+params[0][i])
+	}
 }
 
 function call_xmlrpc(method, args, callback) {
@@ -57,6 +60,10 @@ function debug(val) {
 	list.appendChild(foo)
 }
 
+/*
+ * Marshall a javascript dictionary into an XMLRPC document
+ */
+
 function hash2rpcparam(h) {
 	var xml = "<!-- " + h + "-->";
 	xml += "<struct>";
@@ -71,23 +78,32 @@ function hash2rpcparam(h) {
 	return xml
 }
 
+/*
+ * Marshall an XMLRPC document into a JavaScript structure
+ */
 function rpcparam2hash(doc) {
-	rpc = Array()
-	if (doc.tagName == "methodResponse") {
+	var rpc;
+	if (doc.tagName == "methodResponse" || doc.tagName == "array") {
+		rpc = Array()
 		for (var i = 0; i < doc.childNodes.length; i++) {
-			debug("Type: " + doc.childNodes[i].nodeName)
-			rpc.push(rpcparam2hash(doc.childNodes[i]))
+			var myparam
+			//debug("Type: " + doc.childNodes[i].nodeName)
+			myparam = rpcparam2hash(doc.childNodes[i])
+			rpc.push(myparam)
 		}
+		//Object.dpDump(rpc)
 	} else if (doc.tagName == "value") {
-		child = doc.childNodes[0]; // only one child of value
+		var child = doc.childNodes[0]; // only one child of value
 		if (child.tagName == "i4" || child.tagName == "int"
 			 || child.tagName == "string" || child.tagName == "boolean"
 			 || child.tagName == "double") {
-			debug("Convert ("+child.tagName+"): " + child.childNodes[0].nodeValue)
-			rpc.push(child.childNodes[0].nodeValue);
+			//debug("Convert ("+child.tagName+"): " + child.childNodes[0].nodeValue)
+			rpc = child.childNodes[0].nodeValue;
 		} else if (child.tagName == "struct") {
-			tmphash = Array()
+			rpc = Array()
+			//debug("Struct length: " + child.childNodes.length)
 			for (var x = 0; x < child.childNodes.length; x++) { // member node
+				//debug("Run: " + x + " / " + child.childNodes.length)
 				var name;
 				var value;
 				var node = child.childNodes[x]
@@ -105,20 +121,15 @@ function rpcparam2hash(doc) {
 							//debug("Unknown (in struct): " + mynode.nodeName)
 						}
 					}
-				}
-				//debug(name + " => " + value)
-				tmphash[name] = value
-				var a = "";
-				debug("SO FAR");
-				for (abc in tmphash) {
-					debug("Progress: " + abc)
+					//debug("Storing: " + name + " => " + value)
+					rpc[name] = value
 				}
 			}
-			debug("Struct: " + tmphash)
-			rpc.push(tmphash);
+		} else {
+			/* Nothing happens if we hit an element we don't know */
 		}
 	} else {
-		debug("Unknown node: " + doc)
+		//debug("Unknown node: " + doc)
 	}
 
 	return rpc

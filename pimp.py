@@ -31,8 +31,8 @@ class RPC:
 	def respond(self, args):
 		m = xmlrpclib.Marshaller()
 		self.ofunc("<methodResponse>")
-		m.dump_struct(args, ofunc)
-		ofunc("</methodResponse>")
+		m.dump_struct(args, self.ofunc)
+		self.ofunc("</methodResponse>")
 
 	def call_control(self, params):
 		print "CONTROL"
@@ -42,13 +42,10 @@ class RPC:
 		self.respond(hash)
 
 	def call_search(self, params):
-		print "SEARCH"
 		m = MusicList()
 		results = {}
-		query = params[0]["any"]
-		cur = m.cursor()
-		cur.execute("SELECT filename FROM music WHERE filename LIKE ?", "%%%s%%"%query)
-		print type(cur.fetchall())
+		query = params[0]["any"].split(" ");
+		results = m.search_allfields(query)
 		self.respond(results)
 	
 	def invalidcall(self, params, ofunc):
@@ -113,8 +110,35 @@ class MusicList:
 		cur.close()
 		return song
 	
-	def search_anymatch(self, args):
-		pass
+	def search_allfields(self, args):
+		cur = self.db.cursor()
+		fields = ["artist", "album", "title", "filename"]
+		query = "SELECT songid,%s as 'Filename' FROM music WHERE " % ",".join(fields)
+
+		expression = "(%s)" % " OR ".join(map(lambda x: "%s LIKE ?" % x, fields))
+		query += " AND ".join(map(lambda x: expression, args))
+		query += " LIMIT 30"
+
+		# Can you read this? ;)
+		binds = []
+		map(lambda x: binds.extend(map(lambda y: "%%%s%%" % x, fields)), args)
+		cur.execute(query, binds)
+		
+		inc = 0
+		results = {}
+		for i in cur.fetchall():
+			entry = {
+				"songid": str(i[0]),
+				"artist": str(i[1]),
+				"album": str(i[2]),
+				"title": str(i[3]),
+				"filename": str(i[4]),
+			}
+			#results.append(entry)
+			results[str(inc)] = entry
+			inc += 1
+
+		return results
 
 class MP3Client:
 	def __init__(self, plug):

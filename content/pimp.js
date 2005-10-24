@@ -6,7 +6,7 @@ function loadfunc() {
 }
 
 function clickfunc() {
-	debug("Calling xmlrpc method with '12' and '15' as params")
+	debug("Calling xmlrpc method 'search' with param 'nightwish'")
 	call_xmlrpc("search", {any: "nightwish"}, click_callback)
 }
 
@@ -20,7 +20,7 @@ function xmlrpc_callback() {
 
 		//debug(xmlrpc.responseText)
 		var hash = rpcparam2hash(doc.childNodes[0])
-		Object.dpDump(hash)
+		//Object.dpDump(hash)
 
 		xmlrpc.mycallback(hash)
 	}
@@ -29,6 +29,7 @@ function xmlrpc_callback() {
 function click_callback(params) {
 	for (var i in params[0]) {
 		debug("params[0]["+i+"] = "+params[0][i])
+		debug("params[0]["+i+"]['filename'] = "+params[0][i]['filename'])
 	}
 }
 

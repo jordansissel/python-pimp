@@ -1,9 +1,9 @@
 #!/usr/local/bin/python
-# coding: iso-8859-1
 
 import SocketServer, BaseHTTPServer
 from threading import Thread,Event
 from pysqlite2 import dbapi2 as sqlite
+import xmlrpclib
 
 import Queue
 import re
@@ -17,9 +17,27 @@ import random
 
 MEDIAPATH = "/mnt/Audio/MP3"
 
-eventqueue = Queue.Queue()
+events = Queue.Queue()
 streamlist = {}
 clientlist = []
+
+class RPC:
+	def call(self, method, params, ofunc):
+		func = getattr(self, "call_%s" % method, self.invalidcall)
+		func(params, ofunc)
+
+	def call_control(self, params, ofunc):
+		m = xmlrpclib.Marshaller()
+		print "%s: CONTROL" % self
+		print "Params: ", params
+		ofunc("<methodResponse>")
+		m.dump_struct({"Testing": "Foo bar baz"}, ofunc)
+		ofunc("</methodResponse>")
+		
+	
+	def invalidcall(self, params, ofunc):
+		print "Invalid call"
+		print "Params: ", params
 
 class MusicList:
 	needinit = 0
@@ -67,9 +85,11 @@ class MusicList:
 
 	def find_randomsong(self):
 		cur = self.db.cursor()
+
 		# XXX: Cache this.
 		cur.execute("SELECT count(*) FROM music")
 		rows = cur.fetchone()
+
 		row = random.randint(0, rows[0] - 1)
 		print "SELECT * FROM music LIMIT %d,1"%row
 		cur.execute(u"SELECT * FROM music LIMIT %d,1" %row)
@@ -193,8 +213,18 @@ class ControlWebPlug(Plug):#{{{
 #}}}
 class ControlXMLRPCPlug(Plug):#{{{
 	def process(self):
-		# XMLRPC Interface
-		pass
+		r = self.request
+		data = r.rfile.read(int(r.headers["content-length"]))
+		(params, method) = xmlrpclib.loads(data)
+
+		r.send_response(200)
+		r.send_header("Content-type", "text/xml")
+		r.end_headers()
+
+		rpc = RPC()
+		rpc.call(method, params, r.wfile.write)
+
+
 #}}}
 class GenerateContentPlug(Plug):#{{{
 	def process(self):
@@ -279,11 +309,6 @@ class ConnectionHandler(Thread):#{{{
 			'stream': StreamPlug,
 		}
 
-		def do_POST(self):
-			""" This should only be hit via xmlrpc calls from the frontend """
-			self.send_response(404)
-			self.end_headers()
-			self.wfile.write("Hello")
 
 		def do_GET(self):
 			plug = self.path.split("/")[1]
@@ -293,13 +318,11 @@ class ConnectionHandler(Thread):#{{{
 			else:
 				self.handlers['404'](self).process()
 
+		def do_POST(self):
+			self.do_GET()
+
 		def do_HEAD(self):
-			plug = self.path.split("/")[1]
-			if self.handlers.has_key(plug):
-				handler = self.handlers[plug](self)
-				handler.process()
-			else:
-				self.handlers['404'](self).process()
+			self.do_GET()
 #}}}
 
 def decode_string(val):

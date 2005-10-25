@@ -2,7 +2,12 @@ var xmlrpc;
 
 function loadfunc() {
 	var clicky = document.getElementById("test");
-	clicky.addEventListener("click", clickfunc, false);
+	if (clicky.addEventListener) {
+		clicky.addEventListener("click", clickfunc, false);
+	} else {
+		alert("IE")
+		clicky.onclick = clickfunc;
+	}
 }
 
 function clickfunc() {
@@ -23,7 +28,6 @@ function xmlrpc_callback() {
 
 		//debug(xmlrpc.responseText)
 		var hash = rpcparam2hash(doc.childNodes[0])
-		//Object.dpDump(hash)
 
 		xmlrpc.mycallback(hash)
 	}
@@ -33,7 +37,7 @@ function click_callback(params) {
 	for (var i in params[0]) {
 		debug("params[0]["+i+"]['filename'] = "+params[0][i]['filename'])
 	}
-	Object.dpDump(params)
+	//Object.dpDump(params)
 }
 
 function call_xmlrpc(method, args, callback) {

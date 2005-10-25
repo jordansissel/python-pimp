@@ -6,13 +6,12 @@ from pysqlite2 import dbapi2 as sqlite
 import xmlrpclib
 
 import Queue
-import re
+#import re
 
 import socket
-import signal
 import sys
 import os
-import time
+#import time
 import random
 
 MEDIAPATH = "/mnt/Audio/MP3"
@@ -31,7 +30,10 @@ class RPC:
 	def respond(self, args):
 		m = xmlrpclib.Marshaller()
 		self.ofunc("<methodResponse>")
-		m.dump_struct(args, self.ofunc)
+		if type(args) == type({}):
+			m.dump_struct(args, self.ofunc)
+		elif type(args) == type([]):
+			m.dump_array(args, self.ofunc)
 		self.ofunc("</methodResponse>")
 
 	def call_control(self, params):
@@ -42,29 +44,55 @@ class RPC:
 		self.respond(hash)
 
 	def call_search(self, params):
-		m = MusicList()
-		results = {}
+		results = []
 		query = params[0]["any"].split(" ");
-		results = m.search_allfields(query)
+		#results = MusicDB.search_allfields(query)
+		MusicDB.instance.request(method="search_all_fields", args=query, result=results)
 		self.respond(results)
 	
 	def invalidcall(self, params, ofunc):
 		print "Invalid call"
 		print "Params: ", params
 
-class MusicList:
-	needinit = 0
+class MusicDB(Thread):
+	instance = None
 
 	def __init__(self):
+		self.needinit = 0
 		self.dbpath = "%s/.pimpdb" % os.getenv("HOME")
+
 		if not os.path.isfile(self.dbpath):
 			self.needinit = 1
 
-		self.db = sqlite.connect(self.dbpath, detect_types=sqlite.PARSE_DECLTYPES)
+		self.queue = Queue.Queue()
 
 		if self.needinit:
 			self.initdb()
 			self.findmusic()
+
+		MusicDB.instance = self
+		Thread.__init__(self,name="MusicDB")
+
+	def request(self, method, args=None, result=None):
+		event = Event()
+		self.queue.put({"method":method, "args":args, "result":result, "event":event})
+
+		# Wait until this item has been processed
+		event.wait()
+		if not result is None:
+			return result
+
+	def run(self):
+		self.db = sqlite.connect(self.dbpath, detect_types=sqlite.PARSE_DECLTYPES)
+		while 1:
+			item = self.queue.get()
+			print "Got Event: %s" % item["method"]
+			func = getattr(self, "request_%s" % item["method"], self.invalid_request)
+			func(item["args"], item["result"])
+			item["event"].set()
+
+	def invalid_request(self, args):
+		print "INVALID MUSICDB REQUEST"
 
 	def initdb(self):
 		print "Creating database..."
@@ -96,6 +124,7 @@ class MusicList:
 		for s in songs:
 			cur.execute("INSERT INTO music (filename) VALUES (:song)", {"song":s})
 
+	# XXX Rename this function to something more appropriate
 	def find_randomsong(self):
 		cur = self.db.cursor()
 
@@ -110,9 +139,13 @@ class MusicList:
 		cur.close()
 		return song
 	
-	def search_allfields(self, args):
-		cur = self.db.cursor()
+	def request_search_all_fields(self, args, results):
 		fields = ["artist", "album", "title", "filename"]
+		return self.__request_search(args,fields, results)
+
+	def __request_search(self, args, fields, results):
+		cur = self.db.cursor()
+		#fields = ["artist", "album", "title", "filename"]
 		query = "SELECT songid,%s as 'Filename' FROM music WHERE " % ",".join(fields)
 
 		expression = "(%s)" % " OR ".join(map(lambda x: "%s LIKE ?" % x, fields))
@@ -124,8 +157,6 @@ class MusicList:
 		map(lambda x: binds.extend(map(lambda y: "%%%s%%" % x, fields)), args)
 		cur.execute(query, binds)
 		
-		inc = 0
-		results = {}
 		for i in cur.fetchall():
 			entry = {
 				"songid": str(i[0]),
@@ -135,8 +166,7 @@ class MusicList:
 				"filename": str(i[4]),
 			}
 			#results.append(entry)
-			results[str(inc)] = entry
-			inc += 1
+			results.append(entry)
 
 		return results
 
@@ -220,7 +250,8 @@ class MP3Stream:
 class Pimp:#{{{
 	def __init__(self):
 		self.server = ConnectionHandler()
-		self.threads = [self.server]
+		self.musicdb = MusicDB()
+		self.threads = [self.server, self.musicdb]
 
 	def start(self):
 		for a in self.threads:
@@ -387,6 +418,14 @@ def adapt_string(val):
 if __name__ == '__main__':
 	sqlite.register_adapter(str, adapt_string)
 	sqlite.register_converter('VARCHAR', decode_string)
-	m = MusicList()
 	p = Pimp()
 	p.start()
+	p.join()
+
+	#results = []
+	#print "Requesting search_all_fields"
+	#MusicDB.instance.request(method="search_all_fields", args=["nightwish"], result=results)
+#
+	#print "RESULTS:"
+	#for i in results:
+		#print i["filename"]

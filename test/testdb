@@ -1,0 +1,25 @@
+#!/usr/local/bin/python
+
+import os
+from pysqlite2 import dbapi2 as sqlite
+
+def decode_string(val):
+	return val
+
+def adapt_string(val):
+	return unicode(val).encode("US-ASCII")
+
+sqlite.register_adapter(str, adapt_string)
+sqlite.register_converter('VARCHAR', decode_string)
+
+dbpath = "%s/.pimpdb" % os.getenv("HOME")
+db = sqlite.connect(dbpath, detect_types=sqlite.PARSE_DECLTYPES)
+
+cur = db.cursor()
+cur.execute("SELECT filename FROM music")
+
+foo = cur.fetchall()
+for i in foo:
+	print i[0]
+
+

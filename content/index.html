@@ -1,9 +1,11 @@
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
 	<title>Happy control!</title>
 	<link rel="stylesheet" type="text/css" href="/content/style.css" />
-	<script src="/content/DP_Debug.js" />
-	<script src="/content/pimp.js" />
+	<!-- don't use <script /> here becuase IE sucks ass -->
+	<script src="/content/DP_Debug.js"></script>
+	<script src="/content/pimp.js"></script>
 </head>
 <body>
 	<div class="titlebar">
@@ -15,7 +17,7 @@
 		<div style="padding:3px;background-color:#DDE4FF;border:1px solid black">
 			Search for music:
 			<input id="query" type="text" size="35" />
-			<input type="button" id="test" value="Search!" />
+			<input type="button" id="test" value="Search!" onclick="clickfunc()"/>
 		</div>
 		<div id="streamlist-panel">
 			<h4 style="font-variant: small-caps">Choose your destiny:</h4>

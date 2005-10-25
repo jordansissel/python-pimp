@@ -377,14 +377,14 @@ class ConnectionHandler(Thread):#{{{
 			self.do_GET()
 #}}}
 
+# Unicode sucks, use ASCII
 def decode_string(val):
-	return unicode(val, "US-ASCII").decode("UTF-8")
+	return val
 
 def adapt_string(val):
 	return unicode(val).encode("US-ASCII")
 
 if __name__ == '__main__':
-	# Unicode sucks, use ASCII
 	sqlite.register_adapter(str, adapt_string)
 	sqlite.register_converter('VARCHAR', decode_string)
 	m = MusicList()

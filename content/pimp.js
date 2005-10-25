@@ -31,6 +31,7 @@ function click_callback(params) {
 		debug("params[0]["+i+"] = "+params[0][i])
 		debug("params[0]["+i+"]['filename'] = "+params[0][i]['filename'])
 	}
+	Object.dpDump(params)
 }
 
 function call_xmlrpc(method, args, callback) {

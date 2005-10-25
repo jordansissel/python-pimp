@@ -6,8 +6,11 @@ function loadfunc() {
 }
 
 function clickfunc() {
-	debug("Calling xmlrpc method 'search' with param 'nightwish'")
-	call_xmlrpc("search", {any: "nightwish"}, click_callback)
+	document.getElementById("streamlist").innerHTML = "";
+	debug("Calling xmlrpc method 'search'")
+	query = document.getElementById("query").value;
+	debug("Query was '" + query + "'")
+	call_xmlrpc("search", {any: query}, click_callback)
 }
 
 function xmlrpc_callback() {
@@ -28,7 +31,6 @@ function xmlrpc_callback() {
 
 function click_callback(params) {
 	for (var i in params[0]) {
-		debug("params[0]["+i+"] = "+params[0][i])
 		debug("params[0]["+i+"]['filename'] = "+params[0][i]['filename'])
 	}
 	Object.dpDump(params)
@@ -85,53 +87,55 @@ function hash2rpcparam(h) {
  */
 function rpcparam2hash(doc) {
 	var rpc;
-	if (doc.tagName == "methodResponse" || doc.tagName == "array") {
+	if (doc.tagName == "methodResponse" || doc.tagName == "data") {
+		//debug("[methodResponse|data]: " + doc.tagName)
 		rpc = Array()
 		for (var i = 0; i < doc.childNodes.length; i++) {
-			var myparam
-			//debug("Type: " + doc.childNodes[i].nodeName)
-			myparam = rpcparam2hash(doc.childNodes[i])
-			rpc.push(myparam)
+			if (doc.childNodes[i].nodeName != "#text") {
+				var myparam
+				//debug("Type(looping): " + doc.childNodes[i].nodeName)
+				myparam = rpcparam2hash(doc.childNodes[i])
+				rpc.push(myparam)
+			}
 		}
 		//Object.dpDump(rpc)
-	} else if (doc.tagName == "value") {
-		var child = doc.childNodes[0]; // only one child of value
-		if (child.tagName == "i4" || child.tagName == "int"
-			 || child.tagName == "string" || child.tagName == "boolean"
-			 || child.tagName == "double") {
-			//debug("Convert ("+child.tagName+"): " + child.childNodes[0].nodeValue)
-			rpc = child.childNodes[0].nodeValue;
-		} else if (child.tagName == "struct") {
-			rpc = Array()
-			//debug("Struct length: " + child.childNodes.length)
-			for (var x = 0; x < child.childNodes.length; x++) { // member node
-				//debug("Run: " + x + " / " + child.childNodes.length)
-				var name;
-				var value;
-				var node = child.childNodes[x]
-				if (node.nodeName == "member") {
-					//debug("Struct: " + node.nodeName)
-					for (var y = 0; y < node.childNodes.length; y++) { // name or value
-						var mynode = node.childNodes[y]
-						if (mynode.tagName == "name") {
-							name = mynode.childNodes[0].nodeValue
-							//debug("--> Member(name): " + name)
-						} else if (mynode.tagName == "value") {
-							value = rpcparam2hash(mynode);
-							//debug("--> Member(value): " + value)
-						} else {
-							//debug("Unknown (in struct): " + mynode.nodeName)
-						}
+	} else if (doc.tagName == "i4" || doc.tagName == "int"
+		 || doc.tagName == "string" || doc.tagName == "boolean"
+		 || doc.tagName == "double") {
+		//debug("Convert ("+doc.tagName+"): " + doc.childNodes[0].nodeValue)
+		rpc = doc.childNodes[0].nodeValue;
+	} else if (doc.tagName == "struct") {
+		rpc = Array()
+		//debug("Struct length: " + doc.childNodes.length)
+		for (var x = 0; x < doc.childNodes.length; x++) { // member node
+			//debug("Run: " + x + " / " + doc.childNodes.length)
+			var name;
+			var value;
+			var node = doc.childNodes[x]
+			if (node.nodeName == "member") {
+				//debug("Struct: " + node.nodeName)
+				for (var y = 0; y < node.childNodes.length; y++) { // name or value
+					var mynode = node.childNodes[y]
+					if (mynode.tagName == "name") {
+						name = mynode.childNodes[0].nodeValue
+						//debug("--> Member(name): " + name)
+					} else if (mynode.tagName == "value") {
+						value = rpcparam2hash(mynode);
+						//debug("--> Member(value): " + value)
+					} else {
+						//debug("Unknown (in struct): " + mynode.nodeName)
 					}
-					//debug("Storing: " + name + " => " + value)
-					rpc[name] = value
 				}
+				//debug("Storing: " + name + " => " + value)
+				rpc[name] = value
 			}
-		} else {
-			/* Nothing happens if we hit an element we don't know */
 		}
+	} else if (doc.tagName == "value" || doc.tagName == "array") {
+		// Arrays and values only one child and no data directly
+		rpc = rpcparam2hash(doc.childNodes[0])
 	} else {
-		//debug("Unknown node: " + doc)
+		/* Nothing happens if we hit an element we don't know */
+		debug("Unknown node: " + doc.nodeName)
 	}
 
 	return rpc

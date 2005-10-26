@@ -40,3 +40,39 @@ input[type="text"] {
 	border-left: 1px solid darkblue;
 	margin-bottom: 1em;
 }
+
+#streamlist table tr th {
+	text-align: left;
+	font-variant: small-caps;
+}
+
+#streamlist table tr td {
+	padding: 3px;
+}
+
+#streamlist table tr:first-child {
+	background-color: #E8E8E8;
+	border-bottom: 1px solid black;
+}
+
+#streamlist table tr td {
+	cursor: pointer;
+}
+
+#streamlist table tr th {
+	background-color: #E8E8E8;
+	border-bottom: 1px solid black;
+}
+
+#streamlist table tr.even {
+	background-color: #E8E8EF;
+}
+
+#streamlist table tr.odd {
+	background-color: #D8D8DF;
+}
+
+#streamlist table tr:hover {
+	background-color: #F8F8DD  !important;
+}
+

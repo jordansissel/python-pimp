@@ -16,11 +16,41 @@ function liststreams_callback(params) {
 	debug("Stream list received")
 	//Object.dpDump(params)
 	for (i in params[0]) {
-		debug("Stream: " + i);
-		//debug("--> Playing: " + params[0][i]["
+		addstream(i, params[0][i])
 	}
 
-	Object.dpDump(params[0])
+	//Object.dpDump(params[0])
+}
+
+function addstream(name, streaminfo) {
+	var list = document.getElementById("streamlist");
+	var foo = document.createElement("div")
+	var text = document.createTextNode("Stream: " + name);
+	var next = document.createElement("input")
+	var playing = document.createElement("div")
+	next.type = "button";
+	next.value = "Next Song";
+	next.streamname = name
+	next.addEventListener("click", nextfunc, false);
+
+	playing.appendChild(document.createTextNode("Song: " + streaminfo["filename"]))
+
+	foo.style.fontWeight="bold";
+	foo.appendChild(text)
+	foo.appendChild(next)
+	foo.appendChild(playing)
+	list.appendChild(foo)
+}
+
+function nextfunc() {
+	debug("Calling 'next_song' on stream '"+ this.streamname +"'")
+	call_xmlrpc("next_song", {"stream":this.streamname}, refreshcallback)
+}
+
+function refreshcallback(params) {
+	//Object.dpDump(params)
+	document.getElementById("streamlist").innerHTML = "";
+	call_xmlrpc("list_streams", {}, liststreams_callback)
 }
 
 function clickfunc() {
@@ -62,7 +92,7 @@ function call_xmlrpc(method, args, callback) {
 		alert("Your browser is not supported")
 		return
 	}
-	debug(xmlrpc)
+	//debug(xmlrpc)
 	xmlrpc.open("POST", "/xmlrpc/control", true);
 	xmlrpc.setRequestHeader("Content-type", "text/xml");
 

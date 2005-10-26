@@ -1,6 +1,6 @@
-BODY {
-	margin: 0;
-	padding: 0;
+body {
+	margin: 0px;
+	padding: 0px;
 	font-family: Arial;
 	height: 100%;
 }
@@ -15,7 +15,7 @@ BODY {
 	font-variant: small-caps;
 }
 
-.titlebar .title h4 {
+.titlebar h4 {
 	margin: 0px;
 	padding: 0px;
 	margin-right: 3em;
@@ -28,17 +28,15 @@ BODY {
 	margin: 1em;
 }
 
-input {
+input[type="text"] {
 	border: 1px inset black;
-	background-color: lightgrey;
+	background-color: lightyellow;
 }
 
-.sectiontitle {
-	padding: 3px;
+.section {
+	padding: .1em;
 	background-color: #DDE4FF;
 	border: 1px solid darkblue;
 	border-left: 1px solid darkblue;
 	margin-bottom: 1em;
 }
-
-

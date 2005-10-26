@@ -10,36 +10,61 @@ function loadfunc() {
 
 	/* Load the streams list */
 	call_xmlrpc("list_streams", {}, liststreams_callback)
+	debug("Loaded...")
+	//alert("Test")
+	//var l=document.createElementNS("http://www.w3.org/1999/xhtml","div");
+	//l.appendChild(document.createTextNode("testing"))
+	//document.body.appendChild(l)
+
+	start_timers()
+}
+
+function start_timers() {
+	setTimeout(updatestreamlist, 1000)
+}
+
+function updatestreamlist() {
+	call_xmlrpc("list_streams", {}, liststreams_callback)
+	//setTimeout(updatestreamlist, 1000)
 }
 
 function liststreams_callback(params) {
-	debug("Stream list received")
+	//debug("Stream list received")
 	//Object.dpDump(params)
 	for (i in params[0]) {
-		addstream(i, params[0][i])
+		updatestream(i, params[0][i])
 	}
 
 	//Object.dpDump(params[0])
 }
 
-function addstream(name, streaminfo) {
+function updatestream(name, streaminfo) {
 	var list = document.getElementById("streamlist");
-	var foo = document.createElement("div")
-	var text = document.createTextNode("Stream: " + name);
-	var next = document.createElement("input")
-	var playing = document.createElement("div")
-	next.type = "button";
-	next.value = "Next Song";
-	next.streamname = name
-	next.addEventListener("click", nextfunc, false);
+	var streamentry = document.getElementById("stream:" + name);
 
-	playing.appendChild(document.createTextNode("Song: " + streaminfo["filename"]))
+	var stringy = "[" + streaminfo["streaminfo"]["clients"] + " clients] Song: " + streaminfo["song"]["filename"]
+	if (streamentry) {
+		playing = document.getElementById(name + "_song");
+		playing.childNodes[0].nodeValue = stringy
+	} else {
+		streamentry = document.createElementNS("http://www.w3.org/1999/xhtml","div")
+		var text = document.createTextNode(name);
+		//var next = document.createElementNS("http://www.w3.org/1999/xhtml","input")
+		var playing = document.createElementNS("http://www.w3.org/1999/xhtml","div")
+		//next.type = "button";
+		//next.value = "Next Song";
+		//next.streamname = name
+		//next.addEventListener("click", nextfunc, false);
 
-	foo.style.fontWeight="bold";
-	foo.appendChild(text)
-	foo.appendChild(next)
-	foo.appendChild(playing)
-	list.appendChild(foo)
+		playing.appendChild(document.createTextNode(stringy))
+		playing.id = name + "_song"
+		streamentry.id = "stream:" + name;
+		streamentry.style.fontWeight="bold";
+		streamentry.appendChild(text)
+		//streamentry.appendChild(next)
+		streamentry.appendChild(playing)
+		list.appendChild(streamentry)
+	}
 }
 
 function nextfunc() {
@@ -49,12 +74,17 @@ function nextfunc() {
 
 function refreshcallback(params) {
 	//Object.dpDump(params)
-	document.getElementById("streamlist").innerHTML = "";
-	call_xmlrpc("list_streams", {}, liststreams_callback)
+	cleardebug()
+	//debug("Next called on: " + params[0]["streamname"])
+	streamname = params[0]["streamname"]
+	song = document.getElementById(streamname + "_song");
+	song.childNodes[0].nodeValue = params[0]["songdata"]["filename"]
+
+	//call_xmlrpc("list_streams", {}, liststreams_callback)
 }
 
 function clickfunc() {
-	document.getElementById("streamlist").innerHTML = "";
+	cleardebug()
 	debug("Calling xmlrpc method 'search'")
 	query = document.getElementById("query").value;
 	debug("Query was '" + query + "'")
@@ -110,9 +140,14 @@ function call_xmlrpc(method, args, callback) {
 	xmlrpc.send(xml);
 }
 
+function cleardebug() {
+	// Delete children
+	//document.getElementById("debug").innerHTML = "";
+	delete_children(document.getElementById("debug"))
+}
 function debug(val) {
-	var list = document.getElementById("streamlist");
-	var foo = document.createElement("div")
+	var list = document.getElementById("debug");
+	var foo = document.createElementNS("http://www.w3.org/1999/xhtml","div")
 	var text = document.createTextNode(val);
 	foo.style.fontWeight="bold";
 	foo.appendChild(text)
@@ -194,6 +229,12 @@ function rpcparam2hash(doc) {
 	}
 
 	return rpc
+}
+
+function delete_children(element) {
+	for (var i = 0; i < element.childNodes.length; i++) {
+		element.removeChild(element.childNodes[i])
+	}
 }
 
 window.onload = loadfunc

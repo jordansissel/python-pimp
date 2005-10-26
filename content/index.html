@@ -4,29 +4,27 @@
 	<title>Happy control!</title>
 	<link rel="stylesheet" type="text/css" href="/content/style.css" />
 	<!-- don't use <script /> here becuase IE sucks ass -->
-	<script src="/content/DP_Debug.js"></script>
-	<script src="/content/pimp.js"></script>
+	<script src="/content/DP_Debug.js" type="text/javascript"/>
+	<script src="/content/pimp.js" type="text/javascript"/>
 </head>
 <body>
 	<div class="titlebar">
-		<span class="title"> <h4>Pimp 4.0</h4> </span>
+		<h4>Pimp 4.0</h4>
 		<span class="menu"> </span>
 	</div>
 
 	<div class="content">
-		<div class="sectiontitle">
+		<div class="section">
 			Streams
+			<div id="streamlist" />
 		</div>
 
-		<div class="sectiontitle">
+		<div class="section">
 			Search for music:
 			<input id="query" type="text" size="35" />
 			<input type="button" id="test" value="Search!" onclick="clickfunc()"/>
 		</div>
-		<div id="streamlist-panel">
-			<h4 style="font-variant: small-caps">Choose your destiny:</h4>
-			<div id="streamlist" />
-		</div>
 	</div>
+	<div id="debug" style="border:1px solid black;background-color:lightgrey;margin:1em;padding:.5em"/>
 </body>
 </html>

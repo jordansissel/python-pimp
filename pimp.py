@@ -6,13 +6,15 @@ from pysqlite2 import dbapi2 as sqlite
 import xmlrpclib
 
 import Queue
-#import re
 
 import socket
-import sys
 import os
-#import time
 import random
+
+# Things I don't need anymore
+#import time
+#import re
+#import sys
 
 MEDIAPATH = "/mnt/Audio/MP3"
 
@@ -24,6 +26,7 @@ class RPC:
 	ofunc = None
 	def call(self, method, params, ofunc):
 		self.ofunc = ofunc
+		print "Calling RPC Method %s" % method
 		func = getattr(self, "call_%s" % method, self.invalidcall)
 		func(params)
 	
@@ -46,11 +49,18 @@ class RPC:
 	def call_search(self, params):
 		results = []
 		query = params[0]["any"].split(" ");
-		#results = MusicDB.search_allfields(query)
 		MusicDB.instance.request(method="search_all_fields", args=query, result=results)
 		self.respond(results)
+
+	def call_list_streams(self, params):
+		results = {}
+		for stream in streamlist:
+			print "%s => %s" % (stream, streamlist[stream])
+			results[stream] = streamlist[stream]
+
+		self.respond(results)
 	
-	def invalidcall(self, params, ofunc):
+	def invalidcall(self, params):
 		print "Invalid call"
 		print "Params: ", params
 
@@ -124,8 +134,19 @@ class MusicDB(Thread):
 		for s in songs:
 			cur.execute("INSERT INTO music (filename) VALUES (:song)", {"song":s})
 
+	def store_result(self, cursor, storage, fields=["songid", "artist", "album", "title", "genre", "filename"]):
+				
+		for res in cursor.fetchall():
+			entry = {}
+			idx = 0
+			for col in fields:
+				entry[col] = str(res[idx])
+				idx += 1
+			storage.append(entry)
+
+
 	# XXX Rename this function to something more appropriate
-	def find_randomsong(self):
+	def request_get_random_song(self, args, results):
 		cur = self.db.cursor()
 
 		# XXX: Cache this.
@@ -134,10 +155,11 @@ class MusicDB(Thread):
 
 		row = random.randint(0, rows[0] - 1)
 		print "SELECT * FROM music LIMIT %d,1"%row
-		cur.execute(u"SELECT * FROM music LIMIT %d,1" %row)
-		song = cur.fetchone()
-		cur.close()
-		return song
+		cur.execute("SELECT * FROM music LIMIT %d,1" %row)
+		song = []
+		self.store_result(cursor=cur, storage=song)
+		results["song"] = song[0];
+		return song[0]
 	
 	def request_search_all_fields(self, args, results):
 		fields = ["artist", "album", "title", "filename"]
@@ -172,7 +194,7 @@ class MusicDB(Thread):
 
 class MP3Client:
 	def __init__(self, plug):
-		self.music = MusicList()
+		#self.music = MusicList()
 		self.plug = plug
 		self.request = plug.request
 		self.output = self.request.wfile
@@ -216,9 +238,9 @@ class MP3Client:
 		try:
 			while 1:
 				song = self.stream.currentsong()
-				print "%s: %s" % (self, song)
-				self.plug.sendfile(song)
-				self.stream.nextsong(self.music)
+				print "My song: %s" % (song["song"])
+				self.plug.sendfile(song["song"]["filename"])
+				self.stream.nextsong()
 		except socket.error:
 			print "SERVER: Client %s:%d disconnected or died" \
 				% (self.yourhost,self.yourport)
@@ -229,7 +251,7 @@ class MP3Client:
 
 class MP3Stream:
 	def __init__(self, request, name="Unknown Stream"):
-		self.music = MusicList()
+		#self.music = MusicList()
 		self.clients = []
 		self.name = name
 		self.song = None
@@ -239,13 +261,15 @@ class MP3Stream:
 
 	def currentsong(self):
 		if self.song is None:
-			self.nextsong(self.music)
+			self.nextsong()
 
 		return self.song
 
-	def nextsong(self, music):
-		song = music.find_randomsong()
-		self.song = song[-1]
+	def nextsong(self):
+		song = {}
+		MusicDB.instance.request(method="get_random_song", result=song)
+		#print "Song: %s" % song
+		self.song = song
 
 class Pimp:#{{{
 	def __init__(self):

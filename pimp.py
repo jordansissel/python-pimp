@@ -57,15 +57,22 @@ class RPC:
 		name = params[0]["stream"]
 		stream = streamlist[name]
 		stream.nextsong()
-		self.respond(stream.song)
+		self.respond({ 
+						 "songdata": stream.song,
+						 "streamname": name,
+						})
 
 	def call_list_streams(self, params):
 		results = {}
 		for stream in streamlist:
-			print "%s => %s" % (stream, streamlist[stream])
-			results[stream] = streamlist[stream].song
-				#"filename": streamlist[stream]
-#streamlist[stream]
+			#print "%s => %s" % (stream, streamlist[stream])
+			
+			results[stream] = { 
+				"song": streamlist[stream].song,
+				"streaminfo": {
+					"clients": len(streamlist[stream].clients)
+				}
+			}
 
 		self.respond(results)
 	
@@ -328,7 +335,7 @@ class ControlWebPlug(Plug):#{{{
 	def process(self):
 		r = self.request
 		r.send_response(200)
-		r.send_header("Content-type", "text/html")
+		r.send_header("Content-type", SendContentPlug.content_type["html"])
 		r.end_headers()
 
 		if r.command == "GET":
@@ -373,7 +380,8 @@ class Error404Plug(Plug):#{{{
 class SendContentPlug(Plug):#{{{
 	content_type = {
 		"css": "text/css",
-		"html": "text/html",
+		#"html": "text/html",
+		"html": "application/xhtml+xml",
 		"js": "text/javascript",
 		"jpg": "image/jpeg",
 		"png": "image/png",

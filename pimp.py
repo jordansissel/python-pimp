@@ -53,7 +53,11 @@ class RPC:
 		MusicDB.instance.request(method="search_all_fields", args=query, result=results)
 		self.respond(results)
 
-	def call_next_song(self, params);
+	def call_next_song(self, params):
+		name = params[0]["stream"]
+		stream = streamlist[name]
+		stream.nextsong()
+		self.respond(stream.song)
 
 	def call_list_streams(self, params):
 		results = {}

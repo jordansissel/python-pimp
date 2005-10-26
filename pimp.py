@@ -33,6 +33,7 @@ class RPC:
 	def respond(self, args):
 		m = xmlrpclib.Marshaller()
 		self.ofunc("<methodResponse>")
+
 		if type(args) == type({}):
 			m.dump_struct(args, self.ofunc)
 		elif type(args) == type([]):
@@ -52,11 +53,15 @@ class RPC:
 		MusicDB.instance.request(method="search_all_fields", args=query, result=results)
 		self.respond(results)
 
+	def call_next_song(self, params);
+
 	def call_list_streams(self, params):
 		results = {}
 		for stream in streamlist:
 			print "%s => %s" % (stream, streamlist[stream])
-			results[stream] = streamlist[stream]
+			results[stream] = streamlist[stream].song
+				#"filename": streamlist[stream]
+#streamlist[stream]
 
 		self.respond(results)
 	
@@ -158,7 +163,7 @@ class MusicDB(Thread):
 		cur.execute("SELECT * FROM music LIMIT %d,1" %row)
 		song = []
 		self.store_result(cursor=cur, storage=song)
-		results["song"] = song[0];
+		results["song"] = song[0]
 		return song[0]
 	
 	def request_search_all_fields(self, args, results):
@@ -216,6 +221,8 @@ class MP3Client:
 			self.stream = MP3Stream(self.request.path)
 			streamlist[self.request.path] = self.stream
 
+		self.stream.register_client(self)
+
 	def __str__(self):
 		return "%s:%d" % (self.yourhost, self.yourport)
 
@@ -238,13 +245,14 @@ class MP3Client:
 		try:
 			while 1:
 				song = self.stream.currentsong()
-				print "My song: %s" % (song["song"])
-				self.plug.sendfile(song["song"]["filename"])
+				print "My song: %s" % (song)
+				self.plug.sendfile(song["filename"])
 				self.stream.nextsong()
 		except socket.error:
 			print "SERVER: Client %s:%d disconnected or died" \
 				% (self.yourhost,self.yourport)
 			if clientlist.index(self) > -1:
+				self.stream.kill_client(self)
 				clientlist.remove(self)
 			else:
 				print "Disconnected client not found in client list (UNEXPECTED ERROR)"
@@ -256,8 +264,11 @@ class MP3Stream:
 		self.name = name
 		self.song = None
 
-	def addclient(self, client):
+	def register_client(self, client):
 		self.clients.append(client)
+
+	def kill_client(self, client):
+		self.clients.remove(client)
 
 	def currentsong(self):
 		if self.song is None:
@@ -269,7 +280,7 @@ class MP3Stream:
 		song = {}
 		MusicDB.instance.request(method="get_random_song", result=song)
 		#print "Song: %s" % song
-		self.song = song
+		self.song = song["song"]
 
 class Pimp:#{{{
 	def __init__(self):
@@ -293,6 +304,7 @@ class Plug:#{{{
 	
 	def sendfile(self, src):
 		if not os.path.isfile(src):
+			print "No such file: %s" % src
 			return 0
 
 		f = open(src)

@@ -27,3 +27,18 @@ BODY {
 .content {
 	margin: 1em;
 }
+
+input {
+	border: 1px inset black;
+	background-color: lightgrey;
+}
+
+.sectiontitle {
+	padding: 3px;
+	background-color: #DDE4FF;
+	border: 1px solid darkblue;
+	border-left: 1px solid darkblue;
+	margin-bottom: 1em;
+}
+
+

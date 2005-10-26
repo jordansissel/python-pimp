@@ -14,7 +14,13 @@ function loadfunc() {
 
 function liststreams_callback(params) {
 	debug("Stream list received")
-	Object.dpDump(params)
+	//Object.dpDump(params)
+	for (i in params[0]) {
+		debug("Stream: " + i);
+		//debug("--> Playing: " + params[0][i]["
+	}
+
+	Object.dpDump(params[0])
 }
 
 function clickfunc() {

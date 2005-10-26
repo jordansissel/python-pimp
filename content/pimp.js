@@ -5,9 +5,16 @@ function loadfunc() {
 	if (clicky.addEventListener) {
 		clicky.addEventListener("click", clickfunc, false);
 	} else {
-		alert("IE")
 		clicky.onclick = clickfunc;
 	}
+
+	/* Load the streams list */
+	call_xmlrpc("list_streams", {}, liststreams_callback)
+}
+
+function liststreams_callback(params) {
+	debug("Stream list received")
+	Object.dpDump(params)
 }
 
 function clickfunc() {
@@ -41,7 +48,15 @@ function click_callback(params) {
 }
 
 function call_xmlrpc(method, args, callback) {
-	xmlrpc = new XMLHttpRequest();
+	if (XMLHttpRequest) {
+		xmlrpc = new XMLHttpRequest();
+	} else if (ActiveXObject) {
+		xmlrpc = new ActiveXObject("Microsoft.XMLHTTP");
+	} else {
+		alert("Your browser is not supported")
+		return
+	}
+	debug(xmlrpc)
 	xmlrpc.open("POST", "/xmlrpc/control", true);
 	xmlrpc.setRequestHeader("Content-type", "text/xml");
 

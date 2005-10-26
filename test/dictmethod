@@ -1,0 +1,10 @@
+#!/usr/local/bin/python
+
+def foo(a):
+	a = {"test":"foo"}
+
+blah = {}
+
+foo(blah)
+
+print blah

@@ -1,0 +1,5 @@
+#!/usr/local/bin/python
+import pimp
+
+MusicDB().start()
+print MusicDB.instance

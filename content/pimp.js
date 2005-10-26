@@ -31,39 +31,73 @@ function updatestreamlist() {
 function liststreams_callback(params) {
 	//debug("Stream list received")
 	//Object.dpDump(params)
+	var idx = 0
 	for (i in params[0]) {
-		updatestream(i, params[0][i])
+		updatestream(i, params[0][i], idx)
+		idx++;
 	}
 
 	//Object.dpDump(params[0])
 }
 
-function updatestream(name, streaminfo) {
+function mkelement(tag) {
+	return document.createElementNS("http://www.w3.org/1999/xhtml",tag)
+}
+
+function mktext(val) {
+	return document.createTextNode(val);
+}
+
+function updatestream(name, streaminfo, idx) {
 	var list = document.getElementById("streamlist");
+	var table = document.getElementById("streamlist_table")
 	var streamentry = document.getElementById("stream:" + name);
 
-	var stringy = "[" + streaminfo["streaminfo"]["clients"] + " clients] Song: " + streaminfo["song"]["filename"]
+	//var stringy = "[" + streaminfo["streaminfo"]["clients"] + " clients] Song: " + streaminfo["song"]["filename"]
+	var currentsong  = streaminfo["song"]["filename"]
+	var basename = "stream:" + name;
 	if (streamentry) {
-		playing = document.getElementById(name + "_song");
-		playing.childNodes[0].nodeValue = stringy
+		songelement  = document.getElementById(basename + ":song")
+		songelement.childNodes[0].nodeValue = currentsong
 	} else {
-		streamentry = document.createElementNS("http://www.w3.org/1999/xhtml","div")
-		var text = document.createTextNode(name);
-		//var next = document.createElementNS("http://www.w3.org/1999/xhtml","input")
-		var playing = document.createElementNS("http://www.w3.org/1999/xhtml","div")
-		//next.type = "button";
-		//next.value = "Next Song";
-		//next.streamname = name
-		//next.addEventListener("click", nextfunc, false);
+		streamrow = mkelement("tr")
+		streamname = mkelement("td")
+		streamsong = mkelement("td")
+		streamclients = mkelement("td")
 
-		playing.appendChild(document.createTextNode(stringy))
-		playing.id = name + "_song"
-		streamentry.id = "stream:" + name;
-		streamentry.style.fontWeight="bold";
-		streamentry.appendChild(text)
-		//streamentry.appendChild(next)
-		streamentry.appendChild(playing)
-		list.appendChild(streamentry)
+		streamname.style.width="8em";
+
+		streamrow.className = (idx % 2) ? "even" : "odd";
+
+		tmpfunc = function(tag, val){
+			var el = mkelement(tag);
+			el.appendChild(mktext(val));
+			el.style.height="1.15em";
+			el.style.overflow="hidden";
+			return el;
+		}
+
+		var namediv = tmpfunc("div", name.substr(8));
+		var songdiv = tmpfunc("div", currentsong);
+		var clientdiv = tmpfunc("div", streaminfo["streaminfo"]["clients"])
+
+		streamname.appendChild(namediv);
+		streamsong.appendChild(songdiv);
+		streamclients.appendChild(clientdiv);
+
+		streamrow.id = basename;
+		streamname.id = basename + ":name";
+		streamsong.id = basename + ":song";
+		streamclients.id = basename + ":clients";
+
+		//debug("SN: " + streamname)
+		streamrow.appendChild(streamname);
+		streamrow.appendChild(streamsong);
+		streamrow.appendChild(streamclients);
+
+		// Append to table
+		table.appendChild(streamrow)
+		streamsong.style.height="1em";
 	}
 }
 
@@ -147,8 +181,8 @@ function cleardebug() {
 }
 function debug(val) {
 	var list = document.getElementById("debug");
-	var foo = document.createElementNS("http://www.w3.org/1999/xhtml","div")
-	var text = document.createTextNode(val);
+	var foo = mkelement("div");
+	var text = mktext(val);
 	foo.style.fontWeight="bold";
 	foo.appendChild(text)
 	list.appendChild(foo)

@@ -16,7 +16,7 @@ import random
 #import re
 #import sys
 
-MEDIAPATH = "/mnt/Audio/MP3"
+MEDIAPATH = "/mnt/Audio"
 
 events = Queue.Queue()
 streamlist = {}
@@ -88,13 +88,10 @@ class MusicDB(Thread):
 		self.dbpath = "%s/.pimpdb" % os.getenv("HOME")
 
 		if not os.path.isfile(self.dbpath):
+			print "Need to create db"
 			self.needinit = 1
 
 		self.queue = Queue.Queue()
-
-		if self.needinit:
-			self.initdb()
-			self.findmusic()
 
 		MusicDB.instance = self
 		Thread.__init__(self,name="MusicDB")
@@ -110,6 +107,12 @@ class MusicDB(Thread):
 
 	def run(self):
 		self.db = sqlite.connect(self.dbpath, detect_types=sqlite.PARSE_DECLTYPES)
+
+		# Initialize the db if we need to.
+		if self.needinit:
+			self.initdb()
+			self.findmusic()
+
 		while 1:
 			item = self.queue.get()
 			print "Got Event: %s" % item["method"]
@@ -182,6 +185,7 @@ class MusicDB(Thread):
 		return self.__request_search(args,fields, results)
 
 	def __request_search(self, args, fields, results):
+		print "SEARCHING"
 		cur = self.db.cursor()
 		#fields = ["artist", "album", "title", "filename"]
 		query = "SELECT songid,%s as 'Filename' FROM music WHERE " % ",".join(fields)

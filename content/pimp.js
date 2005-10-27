@@ -25,13 +25,15 @@ function start_timers() {
 
 function updatestreamlist() {
 	call_xmlrpc("list_streams", {}, liststreams_callback)
-	//setTimeout(updatestreamlist, 1000)
+	setTimeout(updatestreamlist, 1000)
 }
 
 function liststreams_callback(params) {
 	//debug("Stream list received")
 	//Object.dpDump(params)
 	var idx = 0
+	
+	var tbl
 	for (i in params[0]) {
 		updatestream(i, params[0][i], idx)
 		idx++;
@@ -53,19 +55,21 @@ function updatestream(name, streaminfo, idx) {
 	var table = document.getElementById("streamlist_table")
 	var streamentry = document.getElementById("stream:" + name);
 
-	//var stringy = "[" + streaminfo["streaminfo"]["clients"] + " clients] Song: " + streaminfo["song"]["filename"]
 	var currentsong  = streaminfo["song"]["filename"]
 	var basename = "stream:" + name;
 	if (streamentry) {
-		songelement  = document.getElementById(basename + ":song")
-		songelement.childNodes[0].nodeValue = currentsong
+		songelement  = document.getElementById(basename + ":song");
+		//debug("Testing: " + basename + ":song");
+		//debug("Songelement: " + songelement.childNodes[0].childnodeValue);
+		//debug("currentsong: " + currentsong);
+		songelement.childNodes[0].nodeValue = currentsong;
 	} else {
 		streamrow = mkelement("tr")
 		streamname = mkelement("td")
 		streamsong = mkelement("td")
 		streamclients = mkelement("td")
 
-		streamname.style.width="8em";
+		streamname.style.width="10em";
 
 		streamrow.className = (idx % 2) ? "even" : "odd";
 
@@ -86,9 +90,12 @@ function updatestream(name, streaminfo, idx) {
 		streamclients.appendChild(clientdiv);
 
 		streamrow.id = basename;
-		streamname.id = basename + ":name";
-		streamsong.id = basename + ":song";
-		streamclients.id = basename + ":clients";
+		//streamname.id = basename + ":name";
+		//streamsong.id = basename + ":song";
+		//streamclients.id = basename + ":clients";
+		namediv.id = basename + ":name";
+		songdiv.id = basename + ":song";
+		clientdiv.id = basename + ":clients";
 
 		//debug("SN: " + streamname)
 		streamrow.appendChild(streamname);

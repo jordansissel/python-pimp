@@ -1,4 +1,10 @@
 
+Software Requirements:
+------------------------------------------------
+sqlite
+pysqlite2
+id3lib (id3lib.sf.net)
+pyid3lib (pyid3lib.sf.net)
 
 Pimp ->
 	Listens on one port

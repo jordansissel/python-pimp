@@ -20,12 +20,12 @@ function loadfunc() {
 }
 
 function start_timers() {
-	setTimeout(updatestreamlist, 1000)
+	setTimeout(updatestreamlist, 2000)
 }
 
 function updatestreamlist() {
 	call_xmlrpc("list_streams", {}, liststreams_callback)
-	setTimeout(updatestreamlist, 1000)
+	setTimeout(updatestreamlist, 2000)
 }
 
 function liststreams_callback(params) {
@@ -33,13 +33,34 @@ function liststreams_callback(params) {
 	//Object.dpDump(params)
 	var idx = 0
 	
-	var tbl
-	for (i in params[0]) {
+	var updates = []
+
+	for (var i in params[0]) {
 		updatestream(i, params[0][i], idx)
+		updates.push(i)
 		idx++;
 	}
 
-	//Object.dpDump(params[0])
+	// Blow away old streams that aren't listed anymore
+	var table = document.getElementById("streamlist_table");
+	for (var i = 0; i < table.childNodes.length; i++) {
+		var el = table.childNodes[i];
+		if (el.id) {
+			var found = 0
+			debug(table.childNodes[i].tagName + ": " + table.childNodes[i].id)
+			for (var x = 0; x < updates.length && !found; x++) {
+				if (updates[x] = el.id) {
+					found = 1;
+				}
+			}
+
+			if (!found) {
+				table.removeChild(el);
+			}
+
+		}
+	}
+	
 }
 
 function mkelement(tag) {
@@ -115,7 +136,7 @@ function nextfunc() {
 
 function refreshcallback(params) {
 	//Object.dpDump(params)
-	cleardebug()
+	//cleardebug()
 	//debug("Next called on: " + params[0]["streamname"])
 	streamname = params[0]["streamname"]
 	song = document.getElementById(streamname + "_song");
@@ -125,7 +146,7 @@ function refreshcallback(params) {
 }
 
 function clickfunc() {
-	cleardebug()
+	//cleardebug()
 	debug("Calling xmlrpc method 'search'")
 	query = document.getElementById("query").value;
 	debug("Query was '" + query + "'")
@@ -135,6 +156,11 @@ function clickfunc() {
 function xmlrpc_callback() {
 	if (xmlrpc.readyState == 4) {
 		var doc = xmlrpc.responseXML;
+		if (!doc) {
+			//debug("Pimp server is down")
+			// Server is down?
+			return
+		}
 		if (doc.childNodes[0].tagName != "methodResponse") {
 			debug("UNEXPECTED NON-XMLRPC RESPONSE FROM SERVER");
 			return;

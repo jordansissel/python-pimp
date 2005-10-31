@@ -126,5 +126,25 @@ input[type="text"] {
 }
 
 .menu {
-	align: right;
+	float: right;
+	position: absolute;
+	top: 0px;
+	right: 0px;
+	background-color: #D0D8EF;
+	font-size: 1.5em;
+	border-bottom: 1px solid black;
+	border-left: 1px solid black;
+}
+
+.menu > a {
+	padding-left: .5em;
+	padding-right: .5em;
+	//font-weight: bold;
+	font-size: 1em;
+	text-decoration: none;
+}
+
+.menu > a:hover {
+	background-color: #FFFFF8;
+	//border: 1px solid grey;
 }

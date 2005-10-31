@@ -1,8 +1,9 @@
-body {
+html,body {
 	margin: 0px;
 	padding: 0px;
 	font-family: Arial;
-	height: 100%;
+	//height: 100%;
+	background-color: #FFFFF8;
 }
 
 .titlebar {
@@ -20,7 +21,7 @@ body {
 	padding: 0px;
 	margin-right: 3em;
 	font-size: 36pt;
-	outline: grey solid thin;
+	//outline: grey solid thin;
 	display: inline;
 }
 
@@ -35,9 +36,7 @@ input[type="text"] {
 
 .section {
 	padding: .1em;
-	background-color: #DDE4FF;
 	border: 1px solid darkblue;
-	margin-bottom: 1em;
 }
 
 #streamlist table tr th {
@@ -85,3 +84,47 @@ input[type="text"] {
 	background-color: #F8F8DD  !important;
 }
 
+.pane {
+	//margin: 1em;
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	display: none;
+}
+
+.pane > * { margin: 1em; }
+
+#debug {
+	border-top: 1px solid black;
+	background-color: lightgrey;
+	position: absolute;
+	bottom: 0;
+	height: 8em;
+	overflow: auto;
+	width: 100%;
+	padding-top: .5em;
+}
+
+#debug > * {
+	padding-left: .5em;
+	padding-right: .5em;
+}
+
+#streamcontrol_pane {
+	background-color: #DEDEEF;
+	border: 1px solid black;
+	padding: 0px;
+	border: 0px;
+	margin: 0px;
+}
+
+
+#streamcontrol_pane .stream-title {
+	font-weight: bold;
+	font-variant: small-caps;
+}
+
+.menu {
+	align: right;
+}

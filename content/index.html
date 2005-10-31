@@ -9,28 +9,36 @@
 <body>
 	<div class="titlebar">
 		<h4>Pimp 4.0</h4>
-		<span class="menu"> </span>
+	</div>
+	<div class="menu">
+		<a href="javascript:show('streamlist_pane')">View Streams</a>
+	</div>
+	<div align="right">
+	<form action="javascript:function(){}">
+	Search for music:
+	<input id="query" type="text" size="35" />
+	<input type="submit" id="test" value="Search!" />
+	</form>
 	</div>
 
-	<div class="content">
-		<div class="section">
-			<div id="streamlist" style="padding:0px !important">
-				<table id="streamlist_table" cellspacing="0" cellpadding="0" width="100%">
-					<tr>
-						<th style="width:10em"> Stream Name </th>
-						<th> Current Song </th>
-						<th> Clients </th>
-					</tr>
-				</table>
+	<div class="content" id="container">
+		<div id="streamlist_pane" class="pane">
+			<div class="section">
+				<div id="streamlist" style="padding:0px !important">
+					<table id="streamlist_table" cellspacing="0" cellpadding="0" width="100%">
+						<tr>
+							<th style="width:10em"> Stream Name </th>
+							<th> Current Song </th>
+							<th> Clients </th>
+						</tr>
+					</table>
+				</div>
 			</div>
 		</div>
-
-		<div class="section">
-			Search for music:
-			<input id="query" type="text" size="35" />
-			<input type="button" id="test" value="Search!" />
-		</div>
+		<div id="streamcontrol_pane" class="pane" />
 	</div>
-	<div id="debug" style="border:1px solid black;background-color:lightgrey;margin:1em;padding:.5em"/>
+
+
+	<div id="debug"/>
 </body>
 </html>

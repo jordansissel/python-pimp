@@ -1,5 +1,38 @@
 var xmlrpc;
 
+// The next two functions from quirksmode.org
+function findPosX(obj)
+{
+	var curleft = 0;
+	if (obj.offsetParent)
+	{
+		while (obj.offsetParent)
+		{
+			curleft += obj.offsetLeft
+			obj = obj.offsetParent;
+		}
+	}
+	else if (obj.x)
+		curleft += obj.x;
+	return curleft;
+}
+
+function findPosY(obj)
+{
+	var curtop = 0;
+	if (obj.offsetParent)
+	{
+		while (obj.offsetParent)
+		{
+			curtop += obj.offsetTop
+			obj = obj.offsetParent;
+		}
+	}
+	else if (obj.y)
+		curtop += obj.y;
+	return curtop;
+}
+
 function loadfunc() {
 	var clicky = document.getElementById("test");
 	if (clicky.addEventListener) {
@@ -8,17 +41,32 @@ function loadfunc() {
 		clicky.onclick = clickfunc;
 	}
 
+	fixpositions();
+
 	/* Load the streams list */
 	call_xmlrpc("list_streams", {}, liststreams_callback)
-	debug("Loaded...")
-	//alert("Test")
-	//var l=document.createElementNS("http://www.w3.org/1999/xhtml","div");
-	//l.appendChild(document.createTextNode("testing"))
-	//document.body.appendChild(l)
-
 	start_timers()
+
+	document.getElementById("streamlist_pane").style.display="block";
+	debug("Loaded...")
 }
 
+function fixpositions() {
+	var container = document.getElementById("container")
+	var panes = container.childNodes;
+	//debug("Top: " + findPosY(container));
+	for (var i = 0; i < panes.length; i++) {
+		if (panes[i].nodeName == "div") {
+			//debug("panes[i].nodeName: " + panes[i].nodeName);
+			if (panes[i].id != "streamlist_pane") {
+				panes[i].style.display = "none";
+			}
+			panes[i].style.position= "absolute";
+			panes[i].style.top = (findPosY(container) + 15) + "px";
+		}
+	}
+
+}
 function start_timers() {
 	setTimeout(updatestreamlist, 2000)
 }
@@ -32,24 +80,25 @@ function liststreams_callback(params) {
 	//debug("Stream list received")
 	//Object.dpDump(params)
 	var idx = 0
+	var i;
 	
 	var updates = []
 
-	for (var i in params[0]) {
+	for (i in params[0]) {
 		updatestream(i, params[0][i], idx)
-		updates.push(i)
+		updates.push("stream:" + i)
 		idx++;
 	}
 
 	// Blow away old streams that aren't listed anymore
 	var table = document.getElementById("streamlist_table");
-	for (var i = 0; i < table.childNodes.length; i++) {
+	for (i = 0; i < table.childNodes.length; i++) {
 		var el = table.childNodes[i];
 		if (el.id) {
 			var found = 0
-			debug(table.childNodes[i].tagName + ": " + table.childNodes[i].id)
+			//debug(table.childNodes[i].tagName + ": " + table.childNodes[i].id)
 			for (var x = 0; x < updates.length && !found; x++) {
-				if (updates[x] = el.id) {
+				if (updates[x] == el.id) {
 					found = 1;
 				}
 			}
@@ -60,7 +109,6 @@ function liststreams_callback(params) {
 
 		}
 	}
-	
 }
 
 function mkelement(tag) {
@@ -118,31 +166,51 @@ function updatestream(name, streaminfo, idx) {
 		songdiv.id = basename + ":song";
 		clientdiv.id = basename + ":clients";
 
+		streamrow.addEventListener("click", stream_drilldown, false);
+
 		//debug("SN: " + streamname)
 		streamrow.appendChild(streamname);
 		streamrow.appendChild(streamsong);
 		streamrow.appendChild(streamclients);
 
 		// Append to table
+		//debug("Foo: " + table)
 		table.appendChild(streamrow)
-		streamsong.style.height="1em";
+		//debug("A: " + table);
+		//debug("B: " + streamrow);
+	}
+
+	// Update the streampane if necessary
+	var streampane = document.getElementById("streamcontrol_pane");
+	if (streampane.stream) {
+		//debug("Updating streampane with " + name + " / " + streampane.stream);
+		songel = document.getElementById("streampane:song");
+		songel.childNodes[0].nodeValue = currentsong;
 	}
 }
 
 function nextfunc() {
-	debug("Calling 'next_song' on stream '"+ this.streamname +"'")
-	call_xmlrpc("next_song", {"stream":this.streamname}, refreshcallback)
+	debug("Calling 'next_song' on stream '"+ this.streamname +"'");
+	call_xmlrpc("next_song", {"stream":this.streamname}, refreshcallback);
 }
 
 function refreshcallback(params) {
 	//Object.dpDump(params)
 	//cleardebug()
-	//debug("Next called on: " + params[0]["streamname"])
+	debug("Next called on: " + params[0]["streamname"])
 	streamname = params[0]["streamname"]
-	song = document.getElementById(streamname + "_song");
+	//song = document.getElementById(streamname + "_song");
+	song = document.getElementById(basename + ":song");
 	song.childNodes[0].nodeValue = params[0]["songdata"]["filename"]
 
 	//call_xmlrpc("list_streams", {}, liststreams_callback)
+	var streampane = document.getElementById("streamcontrol_pane");
+	debug("Foo: " + streampane)
+	if (streampane.stream == params[0]["streamname"]) {
+		debug("Updating streampane with " + name + " / " + streampane.stream);
+		songel = document.getElementById("streampane:song");
+		songel.childNodes[0].nodeValue = params[0]["songdata"]["filename"]
+	}
 }
 
 function clickfunc() {
@@ -212,6 +280,7 @@ function cleardebug() {
 	//document.getElementById("debug").innerHTML = "";
 	delete_children(document.getElementById("debug"))
 }
+
 function debug(val) {
 	var list = document.getElementById("debug");
 	var foo = mkelement("div");
@@ -219,6 +288,7 @@ function debug(val) {
 	foo.style.fontWeight="bold";
 	foo.appendChild(text)
 	list.appendChild(foo)
+	//foo.focus();
 }
 
 /*
@@ -304,4 +374,61 @@ function delete_children(element) {
 	}
 }
 
-window.onload = loadfunc
+function stream_drilldown() {
+	var listpane = document.getElementById("streamlist_pane");
+	var streampane = document.getElementById("streamcontrol_pane");
+
+	listpane.style.display = "none";
+	streampane.style.display = "block";
+
+	populate_stream_pane(this.id.substr(7));
+}
+
+function populate_stream_pane(streamname) {
+	var streampane = document.getElementById("streamcontrol_pane");
+
+	streampane.stream = streamname;
+	debug(streamname);
+	if (streampane.childNodes.length > 0) {
+		// do nothing?
+	} else {
+		var section = mkelement("div");
+		section.className="section";
+
+		var title = mkelement("div");
+		title.appendChild(mktext("Stream: " + streamname));
+		title.id = "streampane:title";
+		title.className = "stream-title";
+
+		var song = mkelement("div");
+		song.id = "streampane:song";
+		song.appendChild(mktext("Song: happysong?"));
+
+		var nextbutton = mkelement("input");
+		nextbutton.value="Next song";
+		nextbutton.type="button";
+		nextbutton.addEventListener("click", function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);}, false);
+
+		section.appendChild(title);
+		section.appendChild(song);
+		section.appendChild(nextbutton);
+		streampane.appendChild(section);
+	}
+}
+
+function show(what) {
+	var i = 0;
+	var container = document.getElementById("container");
+	for (i = 0; i < container.childNodes.length; i++) {
+		if (container.childNodes[i].nodeName == "div") {
+			debug("Show: " + container.childNodes[i].id + " == " + what);
+			if (container.childNodes[i].id == what) {
+				container.childNodes[i].style.display = "blocK";
+			} else {
+				container.childNodes[i].style.display = "none";
+			}
+		}
+	}
+}
+
+window.onload = loadfunc;

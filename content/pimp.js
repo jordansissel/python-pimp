@@ -1,50 +1,26 @@
 var xmlrpc;
+var interface_type = "workstation";
 
-// The next two functions from quirksmode.org
-function findPosX(obj)
-{
-	var curleft = 0;
-	if (obj.offsetParent)
-	{
-		while (obj.offsetParent)
-		{
-			curleft += obj.offsetLeft
-			obj = obj.offsetParent;
-		}
-	}
-	else if (obj.x)
-		curleft += obj.x;
-	return curleft;
+// For future touchscreen portability
+if (interface_type == "workstation") {
+	clickevent = "click";
+} else {
+	clickevent_type = "mousedown";
 }
 
-function findPosY(obj)
-{
-	var curtop = 0;
-	if (obj.offsetParent)
-	{
-		while (obj.offsetParent)
-		{
-			curtop += obj.offsetTop
-			obj = obj.offsetParent;
-		}
-	}
-	else if (obj.y)
-		curtop += obj.y;
-	return curtop;
-}
+// Client-side storage of stream/client data
+var pimp = {
+	"streams": {},
+};
 
 function loadfunc() {
 	var clicky = document.getElementById("test");
-	if (clicky.addEventListener) {
-		clicky.addEventListener("click", clickfunc, false);
-	} else {
-		clicky.onclick = clickfunc;
-	}
+	clicky.addEventListener(clickevent, clickfunc, false);
 
 	fixpositions();
 
 	/* Load the streams list */
-	call_xmlrpc("list_streams", {}, liststreams_callback)
+	call_updatestreams();
 	start_timers()
 
 	document.getElementById("streamlist_pane").style.display="block";
@@ -65,20 +41,18 @@ function fixpositions() {
 			panes[i].style.top = (findPosY(container) + 15) + "px";
 		}
 	}
-
 }
+
 function start_timers() {
-	setTimeout(updatestreamlist, 2000)
+	setTimeout(call_updatestreams, 2000)
 }
 
-function updatestreamlist() {
+function call_updatestreams() {
 	call_xmlrpc("list_streams", {}, liststreams_callback)
-	setTimeout(updatestreamlist, 2000)
+	setTimeout(call_updatestreams, 2000)
 }
 
 function liststreams_callback(params) {
-	//debug("Stream list received")
-	//Object.dpDump(params)
 	var idx = 0
 	var i;
 	
@@ -120,6 +94,16 @@ function mktext(val) {
 }
 
 function updatestream(name, streaminfo, idx) {
+	// Update the hashtable
+	pimp["streams"][name] = streaminfo;
+
+	updatestreamlist(name, idx);
+	updatestreampane(name, idx);
+}
+
+function updatestreamlist(name, idx) {
+	var streaminfo = pimp["streams"][name];
+
 	var list = document.getElementById("streamlist");
 	var table = document.getElementById("streamlist_table")
 	var streamentry = document.getElementById("stream:" + name);
@@ -166,7 +150,7 @@ function updatestream(name, streaminfo, idx) {
 		songdiv.id = basename + ":song";
 		clientdiv.id = basename + ":clients";
 
-		streamrow.addEventListener("click", stream_drilldown, false);
+		streamrow.addEventListener(clickevent, stream_drilldown, false);
 
 		//debug("SN: " + streamname)
 		streamrow.appendChild(streamname);
@@ -179,13 +163,19 @@ function updatestream(name, streaminfo, idx) {
 		//debug("A: " + table);
 		//debug("B: " + streamrow);
 	}
+}
+
+function updatestreampane(name) {
+	var streaminfo = pimp["streams"][name];
 
 	// Update the streampane if necessary
 	var streampane = document.getElementById("streamcontrol_pane");
-	if (streampane.stream) {
+	if (streampane && streampane.stream == name) {
 		//debug("Updating streampane with " + name + " / " + streampane.stream);
 		songel = document.getElementById("streampane:song");
-		songel.childNodes[0].nodeValue = currentsong;
+		if (songel) {
+			songel.childNodes[0].nodeValue = streaminfo["song"]["filename"];
+		}
 	}
 }
 
@@ -381,16 +371,22 @@ function stream_drilldown() {
 	listpane.style.display = "none";
 	streampane.style.display = "block";
 
+	debug("Drilling into " + this.id.substr(7));
 	populate_stream_pane(this.id.substr(7));
+
+	//Object.dpDump(pimp["streams"])
 }
 
 function populate_stream_pane(streamname) {
 	var streampane = document.getElementById("streamcontrol_pane");
 
 	streampane.stream = streamname;
-	debug(streamname);
 	if (streampane.childNodes.length > 0) {
-		// do nothing?
+		// Update the pane with our stream information
+		var title = document.getElementById("streampane:title");
+		var song = document.getElementById("streampane:song");
+		title.childNodes[0].nodeValue = "Stream: " + streamname;
+		song.childNodes[0].nodeValue = pimp["streams"][streamname]["song"]["filename"]
 	} else {
 		var section = mkelement("div");
 		section.className="section";
@@ -402,12 +398,12 @@ function populate_stream_pane(streamname) {
 
 		var song = mkelement("div");
 		song.id = "streampane:song";
-		song.appendChild(mktext("Song: happysong?"));
+		song.appendChild(mktext(pimp["streams"][streamname]["song"]["filename"]))
 
 		var nextbutton = mkelement("input");
 		nextbutton.value="Next song";
 		nextbutton.type="button";
-		nextbutton.addEventListener("click", function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);}, false);
+		nextbutton.addEventListener(clickevent, function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);}, false);
 
 		section.appendChild(title);
 		section.appendChild(song);
@@ -421,7 +417,7 @@ function show(what) {
 	var container = document.getElementById("container");
 	for (i = 0; i < container.childNodes.length; i++) {
 		if (container.childNodes[i].nodeName == "div") {
-			debug("Show: " + container.childNodes[i].id + " == " + what);
+			//debug("Show: " + container.childNodes[i].id + " == " + what);
 			if (container.childNodes[i].id == what) {
 				container.childNodes[i].style.display = "blocK";
 			} else {
@@ -429,6 +425,37 @@ function show(what) {
 			}
 		}
 	}
+}
+
+// The next two functions from quirksmode.org
+function findPosX(obj) {
+	var curleft = 0;
+	if (obj.offsetParent)
+	{
+		while (obj.offsetParent)
+		{
+			curleft += obj.offsetLeft
+			obj = obj.offsetParent;
+		}
+	}
+	else if (obj.x)
+		curleft += obj.x;
+	return curleft;
+}
+
+function findPosY(obj) {
+	var curtop = 0;
+	if (obj.offsetParent)
+	{
+		while (obj.offsetParent)
+		{
+			curtop += obj.offsetTop
+			obj = obj.offsetParent;
+		}
+	}
+	else if (obj.y)
+		curtop += obj.y;
+	return curtop;
 }
 
 window.onload = loadfunc;

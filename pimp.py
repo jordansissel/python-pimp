@@ -2,7 +2,6 @@
 
 import SocketServer, BaseHTTPServer
 from threading import Thread,Event
-from pysqlite2 import dbapi2 as sqlite
 import xmlrpclib
 
 import Queue
@@ -11,10 +10,9 @@ import socket
 import os
 import random
 
-# Things I don't need anymore
-#import time
-#import re
-#import sys
+# Non-standard python modules
+from pysqlite2 import dbapi2 as sqlite
+import pyid3lib
 
 MEDIAPATH = "/mnt/Audio"
 
@@ -91,6 +89,13 @@ class MusicDB(Thread):
 			print "Need to create db"
 			self.needinit = 1
 
+		# Initialize the db if we need to.
+		if self.needinit:
+			self.db = sqlite.connect(self.dbpath, detect_types=sqlite.PARSE_DECLTYPES)
+			self.initdb()
+			self.findmusic()
+			self.db.close()
+
 		self.queue = Queue.Queue()
 
 		MusicDB.instance = self
@@ -107,11 +112,6 @@ class MusicDB(Thread):
 
 	def run(self):
 		self.db = sqlite.connect(self.dbpath, detect_types=sqlite.PARSE_DECLTYPES)
-
-		# Initialize the db if we need to.
-		if self.needinit:
-			self.initdb()
-			self.findmusic()
 
 		while 1:
 			item = self.queue.get()
@@ -150,8 +150,22 @@ class MusicDB(Thread):
 		print "Dir: %s" % dirname
 		songs = map(lambda x: "%s/%s" % (dirname, x), 
 						filter(lambda x: x[-4:] == ".mp3", fnames))
+
+		log = open("/tmp/id3log", "w")
 		for s in songs:
-			cur.execute("INSERT INTO music (filename) VALUES (:song)", {"song":s})
+			tag = pyid3lib.tag(s)
+			binds = {
+				"artist": getattr(tag, "artist", "Unknown"),
+				"album": getattr(tag, "album", "Unknown"),
+				"title": getattr(tag, "title", "Unknown"),
+				"genre": getattr(tag, "genre", "Unknown"),
+				"filename": s,
+			}
+			log.write("%s\n" % binds);
+			log.flush()
+			cur.execute("INSERT INTO music (artist, album, title, genre, filename) VALUES (:artist, :album, :title, :genre, :filename)", binds)
+
+		log.close()
 
 	def store_result(self, cursor, storage, fields=["songid", "artist", "album", "title", "genre", "filename"]):
 				

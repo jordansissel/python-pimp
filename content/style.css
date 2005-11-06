@@ -185,12 +185,12 @@ input[type="text"] {
 
 .searchresults_resultspane {
 	overflow: auto;
-	height: 35em;
+	height: 30em;
 }
 
 .searchresults_enqueuepane {
 	overflow: auto;
-	height: 35em;
+	height: 30em;
 }
 
 .search_clicktoenqueue {

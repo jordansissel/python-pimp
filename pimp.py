@@ -226,7 +226,7 @@ class MusicDB(Thread):
 		else:
 			expression = "(%s)" % " OR ".join(map(lambda x: "%s = ?" % x, fields))
 		query += " AND ".join(map(lambda x: expression, args))
-		query += " LIMIT 30"
+		query += " LIMIT 300"
 		print "QUERY: %s" % query
 
 		# Can you read this? ;)

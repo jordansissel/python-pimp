@@ -182,14 +182,19 @@ function updatestreampane(name) {
 
 function nextfunc() {
 	debug("Calling 'next_song' on stream '"+ this.streamname +"'");
-	call_xmlrpc("next_song", {"stream":this.streamname}, refreshcallback);
+	call_xmlrpc("next_song", {"stream":this.streamname}, nextsong_callback);
+}
+
+function nextsong_callback(params) {
+	Object.dpDump(params);
 }
 
 function refreshcallback(params) {
 	//Object.dpDump(params)
 	//cleardebug()
 	debug("Next called on: " + params[0]["streamname"])
-	streamname = params[0]["streamname"]
+	var streamname = params[0]["streamname"]
+	var basename = "stream:" + streamname;
 	//song = document.getElementById(streamname + "_song");
 	song = document.getElementById(basename + ":song");
 	song.childNodes[0].nodeValue = prettysong(params[0]["songdata"]);
@@ -274,7 +279,7 @@ function debug(val) {
 	foo.style.fontWeight="bold";
 	foo.appendChild(text)
 	list.appendChild(foo)
-	//list.style.display="none";
+	list.style.display="none";
 }
 
 /*

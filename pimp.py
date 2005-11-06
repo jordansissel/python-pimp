@@ -14,7 +14,7 @@ import random
 from pysqlite2 import dbapi2 as sqlite
 import pyid3lib
 
-MEDIAPATH = "/mnt/Audio"
+MEDIAPATH = "/media/Audio"
 
 events = Queue.Queue()
 streamlist = {}
@@ -29,14 +29,19 @@ class RPC:
 		func(params)
 	
 	def respond(self, args):
-		m = xmlrpclib.Marshaller()
+		m = xmlrpclib.Marshaller("US-ASCII", 1)
+
 		self.ofunc("<methodResponse>")
 
+		file = open("/tmp/xmlrpc.debug", "a");
 		if type(args) == type({}):
 			m.dump_struct(args, self.ofunc)
+			#m.dump_struct(args, file.write)
 		elif type(args) == type([]):
 			m.dump_array(args, self.ofunc)
+			#m.dump_array(args, file.write)
 		self.ofunc("</methodResponse>")
+		
 
 	def call_control(self, params):
 		print "CONTROL"
@@ -47,8 +52,11 @@ class RPC:
 
 	def call_search(self, params):
 		results = []
+		print "PARAMS::::::"
+		print params
 		query = params[0]["any"].split(" ");
 		MusicDB.instance.request(method="search_all_fields", args=query, result=results)
+		print "Found %d songs!!!" % len(results)
 		self.respond(results)
 
 	def call_next_song(self, params):
@@ -63,16 +71,21 @@ class RPC:
 	def call_list_streams(self, params):
 		results = {}
 		for stream in streamlist:
-			#print "%s => %s" % (stream, streamlist[stream])
-			
 			results[stream] = { 
 				"song": streamlist[stream].song,
 				"streaminfo": {
 					"clients": len(streamlist[stream].clients)
 				}
 			}
-
 		self.respond(results)
+
+	def call_enqueue(self, params):
+		print "Enqueue called"
+		params = params[0]
+		print params
+		stream = streamlist[params["stream"]]
+		stream.enqueue(params["list"]);
+		self.respond("ok")
 	
 	def invalidcall(self, params):
 		print "Invalid call"
@@ -193,24 +206,37 @@ class MusicDB(Thread):
 		self.store_result(cursor=cur, storage=song)
 		results["song"] = song[0]
 		return song[0]
+
+	def request_search_id_field(self, args, results):
+		fields = ["songid"]
+		return self.__request_search(args,fields,results,0)
 	
 	def request_search_all_fields(self, args, results):
 		fields = ["artist", "album", "title", "filename"]
 		return self.__request_search(args,fields, results)
 
-	def __request_search(self, args, fields, results):
+	def __request_search(self, args, fields, results, uselike=1):
 		print "SEARCHING"
 		cur = self.db.cursor()
 		#fields = ["artist", "album", "title", "filename"]
-		query = "SELECT songid,%s as 'Filename' FROM music WHERE " % ",".join(fields)
+		query = "SELECT songid,artist,album,title,genre,filename FROM music WHERE "
 
-		expression = "(%s)" % " OR ".join(map(lambda x: "%s LIKE ?" % x, fields))
+		if uselike:
+			expression = "(%s)" % " OR ".join(map(lambda x: "%s LIKE ?" % x, fields))
+		else:
+			expression = "(%s)" % " OR ".join(map(lambda x: "%s = ?" % x, fields))
 		query += " AND ".join(map(lambda x: expression, args))
 		query += " LIMIT 30"
+		print "QUERY: %s" % query
 
 		# Can you read this? ;)
 		binds = []
-		map(lambda x: binds.extend(map(lambda y: "%%%s%%" % x, fields)), args)
+		if uselike:
+			map(lambda x: binds.extend(map(lambda y: "%%%s%%" % x, fields)), args)
+		else:
+			map(lambda x: binds.extend(map(lambda y: x, fields)), args)
+
+		print "SQLARGS: %s" % binds
 		cur.execute(query, binds)
 		
 		for i in cur.fetchall():
@@ -219,9 +245,10 @@ class MusicDB(Thread):
 				"artist": str(i[1]),
 				"album": str(i[2]),
 				"title": str(i[3]),
-				"filename": str(i[4]),
+				"genre": str(i[4]), 
+				"filename": str(i[5]),
 			}
-			#results.append(entry)
+			print "Found: %s" % entry
 			results.append(entry)
 
 		return results
@@ -290,6 +317,7 @@ class MP3Stream:
 	def __init__(self, request, name="Unknown Stream"):
 		#self.music = MusicList()
 		self.clients = []
+		self.queue = []
 		self.name = name
 		self.song = None
 
@@ -307,9 +335,21 @@ class MP3Stream:
 
 	def nextsong(self):
 		song = {}
-		MusicDB.instance.request(method="get_random_song", result=song)
-		#print "Song: %s" % song
-		self.song = song["song"]
+		if len(self.queue) > 0:
+			self.song = self.queue.pop()
+		else:
+			MusicDB.instance.request(method="get_random_song", result=song)
+			self.song = song["song"]
+
+		print "DEBUG:::: %s" % self.song
+
+	def enqueue(self, list):
+		for s in list:
+			song = [] 
+			MusicDB.instance.request(method="search_id_field", args=[s], result=song)
+			print "DATA"
+			print song
+			self.queue.extend(song)
 
 class Pimp:#{{{
 	def __init__(self):
@@ -479,6 +519,10 @@ def decode_string(val):
 	return val
 
 def adapt_string(val):
+	#for v in val:
+		#if (ord(v) > 127):
+			#v = "&#x%02d;" % hex(ord(v));
+		#string += v
 	return unicode(val).encode("US-ASCII")
 
 if __name__ == '__main__':

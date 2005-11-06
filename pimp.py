@@ -422,7 +422,8 @@ class GenerateContentPlug(Plug):#{{{
 class StreamPlug(Plug):#{{{
 	def process(self):
 		client = MP3Client(self)
-		client.broadcast()
+		if r.command == "GET"
+			client.broadcast()
 
 #}}}
 class Error404Plug(Plug):#{{{

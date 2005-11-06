@@ -263,7 +263,6 @@ function call_xmlrpc(method, args, callback) {
 	xml += "</methodCall>"
 
 	xmlrpc.mycallback = callback
-	xmlrpc.send(xml);
 
 	// XXX: HACK!!!
 	// This abuses the fact that local variables are still accessible and in-scope
@@ -275,7 +274,6 @@ function call_xmlrpc(method, args, callback) {
 			var doc = xmlrpc.responseXML;
 			if (!doc) {
 				debug("Pimp server is down or an error occurred")
-				// Server is down?
 				return
 			}
 			if (doc.childNodes[0].tagName != "methodResponse") {
@@ -287,6 +285,8 @@ function call_xmlrpc(method, args, callback) {
 			xmlrpc.mycallback(hash)
 		}
 	}
+
+	xmlrpc.send(xml);
 }
 
 function cleardebug() {

@@ -1,4 +1,4 @@
-var xmlrpc;
+//var xmlrpc;
 var interface_type = "workstation";
 
 // For future touchscreen portability
@@ -45,12 +45,12 @@ function fixpositions() {
 }
 
 function start_timers() {
-	setTimeout(call_updatestreams, 10000)
+	setTimeout(call_updatestreams, 3000)
 }
 
 function call_updatestreams() {
 	call_xmlrpc("list_streams", {}, liststreams_callback)
-	setTimeout(call_updatestreams, 10000)
+	setTimeout(call_updatestreams, 3000)
 }
 
 function liststreams_callback(params) {
@@ -112,22 +112,25 @@ function updatestreamlist(name, idx) {
 	var currentsong  = prettysong(streaminfo["song"])
 	var basename = "stream:" + name;
 	if (streamentry) {
-		songelement  = document.getElementById(basename + ":song");
+		var songelement  = document.getElementById(basename + ":song");
+		var clientselement  = document.getElementById(basename + ":clients");
+
 		//debug("Testing: " + basename + ":song");
 		//debug("Songelement: " + songelement.childNodes[0].childnodeValue);
 		//debug("currentsong: " + currentsong);
 		songelement.childNodes[0].nodeValue = currentsong;
+		clientselement.childNodes[0].nodeValue = streaminfo["streaminfo"]["clients"];
 	} else {
-		streamrow = mkelement("tr")
-		streamname = mkelement("td")
-		streamsong = mkelement("td")
-		streamclients = mkelement("td")
+		var streamrow = mkelement("tr")
+		var streamname = mkelement("td")
+		var streamsong = mkelement("td")
+		var streamclients = mkelement("td")
 
 		streamname.style.width="10em";
 
 		streamrow.className = (idx % 2) ? "even" : "odd";
 
-		tmpfunc = function(tag, val){
+		var tmpfunc = function(tag, val){
 			var el = mkelement(tag);
 			el.appendChild(mktext(val));
 			el.style.height="1.15em";
@@ -240,15 +243,13 @@ function searchclick_callback(params) {
 }
 
 function call_xmlrpc(method, args, callback) {
-	if (XMLHttpRequest) {
-		xmlrpc = new XMLHttpRequest();
-	//} else if (ActiveXObject) {
-		//xmlrpc = new ActiveXObject("Microsoft.XMLHTTP");
-	} else {
+	if (!XMLHttpRequest) {
 		alert("Your browser is not supported")
 		return
 	}
-	//debug(xmlrpc)
+
+	var xmlrpc = new XMLHttpRequest();
+
 	xmlrpc.open("POST", "/xmlrpc/control", true);
 	xmlrpc.setRequestHeader("Content-type", "text/xml");
 
@@ -261,9 +262,31 @@ function call_xmlrpc(method, args, callback) {
 	xml += "</param></params>"
 	xml += "</methodCall>"
 
-	xmlrpc.onreadystatechange = xmlrpc_callback;
 	xmlrpc.mycallback = callback
 	xmlrpc.send(xml);
+
+	// XXX: HACK!!!
+	// This abuses the fact that local variables are still accessible and in-scope
+	// inside anonymous, local functions.
+	// This allows for multiple, simultaneous asynchronous xmlrpc calls to occur 
+	// without individual calls stepping on others
+	xmlrpc.onreadystatechange = function() {
+		if (xmlrpc.readyState == 4) {
+			var doc = xmlrpc.responseXML;
+			if (!doc) {
+				debug("Pimp server is down or an error occurred")
+				// Server is down?
+				return
+			}
+			if (doc.childNodes[0].tagName != "methodResponse") {
+				debug("UNEXPECTED NON-XMLRPC RESPONSE FROM SERVER");
+				return;
+			}
+
+			var hash = rpcparam2hash(doc.childNodes[0]);
+			xmlrpc.mycallback(hash)
+		}
+	}
 }
 
 function cleardebug() {

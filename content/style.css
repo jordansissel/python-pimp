@@ -104,6 +104,8 @@ input[type="text"] {
 	overflow: auto;
 	width: 100%;
 	padding-top: .5em;
+	font-size: smaller;
+
 }
 
 #debug > * {
@@ -147,4 +149,55 @@ input[type="text"] {
 .menu > a:hover {
 	background-color: #FFFFF8;
 	//border: 1px solid grey;
+}
+
+#search_pane {
+	font-size: small;
+	cursor: pointer;
+}
+
+#search_pane tr th {
+	border-bottom: 1px solid black;
+	background-color: lightgrey;
+}
+
+#search_pane tr > *:first-child {
+	border-right: 1px solid black;
+}
+
+.searchresult {
+	padding: 0px;
+	margin: 0px;
+}
+
+.searchresult[even="yes"] {
+	background-color: #E8E8EF;
+}
+
+.searchresult[even="no"] {
+	background-color: #D8D8DF;
+}
+
+.searchresult:hover {
+	background-color: #CACAB8 !important;
+	color: darkblue;
+}
+
+.searchresults_resultspane {
+	overflow: auto;
+	height: 35em;
+}
+
+.searchresults_enqueuepane {
+	overflow: auto;
+	height: 35em;
+}
+
+.search_clicktoenqueue {
+	margin: 1em;
+	padding: .3em;
+	font-weight: bold;
+	background-color: lightgreen;
+	border: 1px outset black;
+	text-align: center;
 }

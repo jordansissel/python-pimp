@@ -13,12 +13,15 @@
 	<div class="menu">
 		<a href="javascript:show('streamlist_pane')">View Streams</a>
 	</div>
-	<div align="right">
-	<form action="javascript:function(){}">
-	Search for music:
-	<input id="query" type="text" size="35" />
-	<input type="submit" id="test" value="Search!" />
-	</form>
+	<div class="search">
+		<div align="right">
+			<script type="text/javascript">function noop() { ; }</script>
+			<form action="javascript:noop()">
+			Search for music:
+			<input id="query" type="text" size="35" />
+			<input type="submit" id="test" value="Search!" />
+			</form>
+		</div>
 	</div>
 
 	<div class="content" id="container">
@@ -36,6 +39,7 @@
 			</div>
 		</div>
 		<div id="streamcontrol_pane" class="pane" />
+		<div id="search_pane" class="pane" />
 	</div>
 
 

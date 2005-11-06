@@ -14,6 +14,8 @@ import random
 from pysqlite2 import dbapi2 as sqlite
 import pyid3lib
 
+### XXX: Change this to your media directory if you want pimp to work
+# XXX: Move this to some configuration-file thing.
 MEDIAPATH = "/media/Audio"
 
 events = Queue.Queue()

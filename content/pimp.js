@@ -1,4 +1,3 @@
-//var xmlrpc;
 var interface_type = "workstation";
 
 // For future touchscreen portability
@@ -11,7 +10,7 @@ if (interface_type == "workstation") {
 // Client-side storage of stream/client data
 var pimp = {
 	"streams": {},
-	"search": {},
+	"search": {}
 };
 
 function loadfunc() {

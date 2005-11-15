@@ -13,7 +13,7 @@
 	<div class="menu">
 		<a href="javascript:show('streamlist_pane')">View Streams</a>
 	</div>
-	<div class="search">
+	<div id="searchbar">
 		<div align="right">
 			<script type="text/javascript">function noop() { ; }</script>
 			<form action="javascript:noop()">
@@ -28,10 +28,10 @@
 		<div id="streamlist_pane" class="pane">
 			<div class="section">
 				<div id="streamlist" style="padding:0px !important">
-					<table id="streamlist_table" cellspacing="0" cellpadding="0" width="100%">
+					<table id="streamlist_table" cellspacing="0" cellpadding="0">
 						<tr>
-							<th style="width:10em"> Stream Name </th>
-							<th> Current Song </th>
+							<th style="width:10em" nowrap="1"> Stream Name </th>
+							<th width="100%"> Current Song </th>
 							<th> Clients </th>
 						</tr>
 					</table>

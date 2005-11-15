@@ -21,7 +21,6 @@ html,body {
 	padding: 0px;
 	margin-right: 3em;
 	font-size: 36pt;
-	//outline: grey solid thin;
 	display: inline;
 }
 
@@ -35,19 +34,20 @@ input[type="text"] {
 }
 
 .section {
-	padding: .1em;
-	border: 1px solid darkblue;
+	//padding: .1em;
+	//border: 1px solid darkblue;
 }
 
 #streamlist table tr th {
 	text-align: left;
 	font-variant: small-caps;
-	padding-left: 3px;
+	padding-left: 4px;
+	padding-right: 3px;
 }
 
 #streamlist table tr td {
-	padding: 2px;
-	padding-left: 1em;
+	padding: 1px;
+	padding-left: 3px;
 }
 
 #streamlist table tr:first-child {
@@ -81,11 +81,10 @@ input[type="text"] {
 }
 
 #streamlist table tr:hover {
-	background-color: #F8F8DD  !important;
+	background-color: #E8BABA  !important;
 }
 
 .pane {
-	//margin: 1em;
 	position: absolute;
 	top: 0px;
 	left: 0px;
@@ -93,7 +92,10 @@ input[type="text"] {
 	display: none;
 }
 
-.pane > * { margin: 1em; }
+.pane > * {
+	margin: 1em;
+	border: 1px solid black;
+}
 
 #debug {
 	border-top: 1px solid black;
@@ -105,7 +107,6 @@ input[type="text"] {
 	width: 100%;
 	padding-top: .5em;
 	font-size: smaller;
-
 }
 
 #debug > * {
@@ -113,18 +114,13 @@ input[type="text"] {
 	padding-right: .5em;
 }
 
-#streamcontrol_pane {
-	background-color: #DEDEEF;
-	border: 1px solid black;
-	padding: 0px;
-	border: 0px;
-	margin: 0px;
-}
-
-
 #streamcontrol_pane .stream-title {
 	font-weight: bold;
 	font-variant: small-caps;
+	background-color: #DEDEEF;
+	border-bottom: 1px solid grey;
+	padding-left: .5em;
+	padding-right: .5em;
 }
 
 .menu {
@@ -141,14 +137,12 @@ input[type="text"] {
 .menu > a {
 	padding-left: .5em;
 	padding-right: .5em;
-	//font-weight: bold;
 	font-size: 1em;
 	text-decoration: none;
 }
 
 .menu > a:hover {
 	background-color: #FFFFF8;
-	//border: 1px solid grey;
 }
 
 #search_pane {
@@ -168,14 +162,6 @@ input[type="text"] {
 .searchresult {
 	padding: 0px;
 	margin: 0px;
-}
-
-.searchresult[even="yes"] {
-	background-color: #E8E8EF;
-}
-
-.searchresult[even="no"] {
-	background-color: #D8D8DF;
 }
 
 .searchresult:hover {
@@ -200,4 +186,8 @@ input[type="text"] {
 	background-color: lightgreen;
 	border: 1px outset black;
 	text-align: center;
+}
+
+#searchbar {
+	display: none;
 }

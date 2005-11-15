@@ -125,15 +125,15 @@ function updatestreamlist(name, idx) {
 		var streamsong = mkelement("td")
 		var streamclients = mkelement("td")
 
-		streamname.style.width="10em";
+		streamname.style.width="8em";
 
 		streamrow.className = (idx % 2) ? "even" : "odd";
 
 		var tmpfunc = function(tag, val){
 			var el = mkelement(tag);
 			el.appendChild(mktext(val));
-			el.style.height="1.15em";
-			el.style.overflow="hidden";
+			//el.style.height="1.15em";
+			//el.style.overflow="hidden";
 			return el;
 		}
 
@@ -146,9 +146,6 @@ function updatestreamlist(name, idx) {
 		streamclients.appendChild(clientdiv);
 
 		streamrow.id = basename;
-		//streamname.id = basename + ":name";
-		//streamsong.id = basename + ":song";
-		//streamclients.id = basename + ":clients";
 		namediv.id = basename + ":name";
 		songdiv.id = basename + ":song";
 		clientdiv.id = basename + ":clients";
@@ -420,6 +417,9 @@ function stream_drilldown() {
 	var listpane = document.getElementById("streamlist_pane");
 	var streampane = document.getElementById("streamcontrol_pane");
 
+	// Show the searchbar now that we've selected a stream
+	document.getElementById("searchbar").style.display="block";
+
 	listpane.style.display = "none";
 	streampane.style.display = "block";
 
@@ -440,6 +440,10 @@ function populate_stream_pane(streamname) {
 		var song = document.getElementById("streampane:song");
 		title.childNodes[0].nodeValue = "Stream: " + streamname;
 		song.childNodes[0].nodeValue = prettysong(pimp["streams"][streamname]["song"])
+
+		var button = document.getElementById("next-song")
+		//button.addEventListener(clickevent, function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);}, false);
+		button.onclick = function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);};
 	debug("Drilling into " + this.id.substr(7));
 	} else {
 		var section = mkelement("div");
@@ -455,9 +459,11 @@ function populate_stream_pane(streamname) {
 		song.appendChild(mktext(prettysong(pimp["streams"][streamname]["song"])))
 
 		var nextbutton = mkelement("input");
+		nextbutton.id="next-song";
 		nextbutton.value="Next song";
 		nextbutton.type="button";
-		nextbutton.addEventListener(clickevent, function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);}, false);
+		//nextbutton.addEventListener(clickevent, function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);}, false);
+		nextbutton.onclick = function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);};
 
 		section.appendChild(title);
 		section.appendChild(song);

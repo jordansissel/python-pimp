@@ -35,13 +35,10 @@ class RPC:
 
 		self.ofunc("<methodResponse>")
 
-		file = open("/tmp/xmlrpc.debug", "a");
 		if type(args) == type({}):
 			m.dump_struct(args, self.ofunc)
-			#m.dump_struct(args, file.write)
 		elif type(args) == type([]):
 			m.dump_array(args, self.ofunc)
-			#m.dump_array(args, file.write)
 		self.ofunc("</methodResponse>")
 		
 
@@ -305,7 +302,7 @@ class MP3Client:
 				song = self.stream.currentsong()
 				print "My song: %s" % (song)
 				self.plug.sendfile(song["filename"])
-				self.stream.nextsong()
+				self.stream.smart_nextsong(song)
 		except socket.error:
 			print "SERVER: Client %s:%d disconnected or died" \
 				% (self.yourhost,self.yourport)
@@ -322,6 +319,7 @@ class MP3Stream:
 		self.queue = []
 		self.name = name
 		self.song = None
+		self.songplayid = 0
 
 	def register_client(self, client):
 		self.clients.append(client)
@@ -332,8 +330,12 @@ class MP3Stream:
 	def currentsong(self):
 		if self.song is None:
 			self.nextsong()
-
 		return self.song
+
+	# Only go to the "next song" if we haven't picked one yet
+	def smart_nextsong(self,oldsong):
+		if self.songplayid == oldsong["playid"]:
+			self.nextsong()
 
 	def nextsong(self):
 		song = {}
@@ -343,7 +345,10 @@ class MP3Stream:
 			MusicDB.instance.request(method="get_random_song", result=song)
 			self.song = song["song"]
 
-		print "DEBUG:::: %s" % self.song
+		self.songplayid += 1
+		self.song["playid"] = self.songplayid
+
+		print "DEBUG:: %s" % self.song
 
 	def enqueue(self, list):
 		for s in list:
@@ -414,7 +419,6 @@ class ControlXMLRPCPlug(Plug):#{{{
 		rpc = RPC()
 		rpc.call(method, params, r.wfile.write)
 
-
 #}}}
 class GenerateContentPlug(Plug):#{{{
 	def process(self):
@@ -424,7 +428,7 @@ class GenerateContentPlug(Plug):#{{{
 class StreamPlug(Plug):#{{{
 	def process(self):
 		client = MP3Client(self)
-		if r.command == "GET"
+		if self.request.command == "GET":
 			client.broadcast()
 
 #}}}

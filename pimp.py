@@ -286,7 +286,7 @@ class MP3Client:
 		response.append("ICY 200 OK") # Standard shoutcast response
 		response.append("icy-url: http://%s:%d/%s" 
 							 % (self.myhost, self.myport, self.request.path[1:]))
-		response.append("icy-name: Pimp 4.0")
+		response.append("icy-name: Pimp 4.0 (%s)" % (self.request.path[1:]))
 
 		# Send the response header
 		self.output.write("%s\n\n" % "\n".join(response))
@@ -404,7 +404,7 @@ class ControlWebPlug(Plug):#{{{
 		r.end_headers()
 
 		if r.command == "GET":
-			self.sendfile("content/index.html")
+			self.sendfile("static/index.html")
 #}}}
 class ControlXMLRPCPlug(Plug):#{{{
 	def process(self):
@@ -440,7 +440,7 @@ class Error404Plug(Plug):#{{{
 		r.end_headers()
 		
 		if r.command == "GET":
-			self.sendfile("content/404.html")
+			self.sendfile("static/404.html")
 #}}}
 class SendContentPlug(Plug):#{{{
 	content_type = {
@@ -501,7 +501,8 @@ class ConnectionHandler(Thread):#{{{
 			'control': ControlWebPlug,
 			'xmlrpc': ControlXMLRPCPlug,
 			'content': SendContentPlug,
-			'generate': GenerateContentPlug,
+			'static': SendContentPlug,
+			'dynamic': GenerateContentPlug,
 			'stream': StreamPlug,
 		}
 

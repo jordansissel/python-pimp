@@ -3,6 +3,7 @@
 import SocketServer, BaseHTTPServer
 from threading import Thread,Event
 import xmlrpclib
+import urllib
 
 import Queue
 
@@ -22,7 +23,7 @@ events = Queue.Queue()
 streamlist = {}
 clientlist = []
 
-class RPC:
+class RPC: #{{{
 	ofunc = None
 	def call(self, method, params, ofunc):
 		self.ofunc = ofunc
@@ -90,7 +91,9 @@ class RPC:
 		print "Invalid call"
 		print "Params: ", params
 
-class MusicDB(Thread):
+#}}}
+
+class MusicDB(Thread): #{{{
 	instance = None
 
 	def __init__(self):
@@ -250,9 +253,9 @@ class MusicDB(Thread):
 			print "Found: %s" % entry
 			results.append(entry)
 
-		return results
+		return results#}}}
 
-class MP3Client:
+class MP3Client: #{{{
 	def __init__(self, plug):
 		#self.music = MusicList()
 		self.plug = plug
@@ -311,8 +314,9 @@ class MP3Client:
 				clientlist.remove(self)
 			else:
 				print "Disconnected client not found in client list (UNEXPECTED ERROR)"
+#}}}
 
-class MP3Stream:
+class MP3Stream: #{{{
 	def __init__(self, request, name="Unknown Stream"):
 		#self.music = MusicList()
 		self.clients = []
@@ -357,6 +361,7 @@ class MP3Stream:
 			print "DATA"
 			print song
 			self.queue.extend(song)
+#}}}
 
 class Pimp:#{{{
 	def __init__(self):
@@ -420,11 +425,6 @@ class ControlXMLRPCPlug(Plug):#{{{
 		rpc.call(method, params, r.wfile.write)
 
 #}}}
-class GenerateContentPlug(Plug):#{{{
-	def process(self):
-		r = self.request
-
-#}}}
 class StreamPlug(Plug):#{{{
 	def process(self):
 		client = MP3Client(self)
@@ -475,6 +475,92 @@ class SendContentPlug(Plug):#{{{
 			self.sendfile(path)
 #}}}
 
+# Generator Plugs {{{
+class GeneratorPlug(Plug): #{{{
+	pass
+#}}}
+class StreamListGeneratorPlug(GeneratorPlug): #{{{
+	def process(self):
+		r = self.request
+		r.send_response(200)
+		r.send_header("Content-type", "text/plain")
+		r.end_headers()
+
+		r.wfile.write("Streams List\n")
+		for stream in streamlist:
+			r.wfile.write("%s\n" % (stream))
+			r.wfile.write("   Clients: %d\n" % len(streamlist[stream].clients))
+			r.wfile.write("   Current Song:\n")
+			r.wfile.write("     Artist: %s\n" % streamlist[stream].song["artist"])
+			r.wfile.write("     Album: %s\n" % streamlist[stream].song["album"])
+			r.wfile.write("     Track: %s\n" % streamlist[stream].song["title"])
+# }}}
+class StreamControlGeneratorPlug(GeneratorPlug): #{{{
+	def process(self):
+		r = self.request
+		r.send_response(200)
+		r.send_header("Content-type", "text/plain")
+		r.end_headers()
+
+		r.wfile.write("Streams List\n")
+		for stream in streamlist:
+			r.wfile.write("%s\n" % (stream))
+			r.wfile.write("   Clients: %d\n" % len(streamlist[stream].clients))
+			r.wfile.write("   Current Song:\n")
+			r.wfile.write("     Artist: %s\n" % streamlist[stream].song["artist"])
+			r.wfile.write("     Album: %s\n" % streamlist[stream].song["album"])
+			r.wfile.write("     Track: %s\n" % streamlist[stream].song["title"])
+# }}}
+class SearchPageGeneratorPlug(GeneratorPlug): #{{{
+	def process(self):
+		r = self.request
+		r.send_response(200)
+		r.send_header("Content-type", "text/html")
+		r.end_headers()
+
+		cgi = CGIParams(r)
+
+		#r.wfile.write("tv= %s\n" % cgi.params["test"])
+		r.wfile.write("""
+<html>
+<body>
+<form method="GET">
+	<input type="text" name="test">
+	<input type="text" name="test">
+	<input type="text" name="test">
+	<input type="text" name="test">
+	<input type="submit">
+</form>
+</body>
+</html>
+""")
+# }}}
+#}}}
+
+class GenerateContentPlug(Plug):#{{{
+	"""
+		This class is an abstraction layer for generated content.  Generated
+		content has the /dynamic/ namespace, but generated content is so unique
+		that each generator module gets it's own child namespace
+	"""
+
+	generators = {
+		"streamlist": StreamListGeneratorPlug,
+		"search": SearchPageGeneratorPlug,
+	}
+
+	def process(self):
+		r = self.request
+		generator = r.path.split("/")[2]
+		if self.generators.has_key(generator):
+			handler = self.generators[generator](r)
+			handler.process()
+		else:
+			r.send_response(404)
+			r.end_headers()
+
+#}}}
+
 class ConnectionHandler(Thread):#{{{
 	"""Handle connections from clients. Pass them off to the appropriate handler """
 
@@ -506,9 +592,10 @@ class ConnectionHandler(Thread):#{{{
 			'stream': StreamPlug,
 		}
 
-
 		def do_GET(self):
 			plug = self.path.split("/")[1]
+			if (not getattr(self,"request_type", None)):
+				self.request_type="GET"
 			if self.handlers.has_key(plug):
 				handler = self.handlers[plug](self)
 				handler.process()
@@ -516,21 +603,45 @@ class ConnectionHandler(Thread):#{{{
 				self.handlers['404'](self).process()
 
 		def do_POST(self):
+			self.request_type="POST"
 			self.do_GET()
 
 		def do_HEAD(self):
+			self.request_type="HEAD"
 			self.do_GET()
 #}}}
+
+class CGIParams:
+	def __init__(self,request):
+		self.request = request
+		print "Request type: %s" % request.request_type
+		parser = getattr(self, "parse%s" % request.request_type, None)
+		if (not parser is None):
+			self.params = parser()
+
+	def parseGET(self):
+		params = {}
+		split = self.request.path.split("?")
+		if (len(split) > 1):
+			query = urllib.unquote_plus(split[1])
+			print "Query: %s" % query
+			for i in query.split("&"):
+				(key,val) = i.split("=",1)
+				params[key] = val
+
+		return params
+
+	def parseHEAD(self):
+		self.parseGET()
+
+	def parsePOST(self):
+		pass
 
 # Unicode sucks, use ASCII
 def decode_string(val):
 	return val
 
 def adapt_string(val):
-	#for v in val:
-		#if (ord(v) > 127):
-			#v = "&#x%02d;" % hex(ord(v));
-		#string += v
 	return unicode(val).encode("US-ASCII")
 
 if __name__ == '__main__':

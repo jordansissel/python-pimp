@@ -650,11 +650,3 @@ if __name__ == '__main__':
 	p = Pimp()
 	p.start()
 	p.join()
-
-	#results = []
-	#print "Requesting search_all_fields"
-	#MusicDB.instance.request(method="search_all_fields", args=["nightwish"], result=results)
-#
-	#print "RESULTS:"
-	#for i in results:
-		#print i["filename"]

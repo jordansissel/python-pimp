@@ -230,6 +230,7 @@ function xmlrpc_callback() {
 		}
 
 		var hash = rpcparam2hash(doc.childNodes[0]);
+		Object.dpDump(hash);
 		xmlrpc.mycallback(hash)
 	}
 }

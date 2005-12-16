@@ -3,8 +3,7 @@
 import SocketServer, BaseHTTPServer
 from threading import Thread,Event
 import xmlrpclib
-import urllib
-
+import urllib 
 import Queue
 
 import socket
@@ -545,16 +544,20 @@ class StreamListPageGeneratorPlug(GeneratorPlug): #{{{
 		r.send_header("Content-type", SendContentPlug.content_type["html"])
 		r.end_headers()
 
-		t = Template("static/layout.html")
+		t = Template("templates/layout.html")
 		list = []
+		x = 0
 		for stream in streamlist:
 			print "Stream %s" % stream
 			s = streamlist[stream]
 			list.append({
-				"_streamname": stream,
-				"_currentsong": "[%s] %s - %s" % (s.song["artist"], s.song["album"], s.song["title"]),
-				"_clients": len(s.clients)
+				"baseattr:onclick": "stream_drilldown('%s')" % stream,
+				"baseattr:class": x % 2 and "even" or "odd",
+				"id:_streamname": stream,
+				"id:_currentsong": "[%s] %s - %s" % (s.song["artist"], s.song["album"], s.song["title"]),
+				"id:_clients": len(s.clients)
 				})
+			x += 1
 
 		t.replicate("_streamentry", list)
 		t.output(r.wfile)

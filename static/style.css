@@ -2,7 +2,6 @@ html,body {
 	margin: 0px;
 	padding: 0px;
 	font-family: Arial;
-	//height: 100%;
 	background-color: #FFFFF8;
 }
 
@@ -31,11 +30,6 @@ html,body {
 input[type="text"] {
 	border: 1px inset black;
 	background-color: lightyellow;
-}
-
-.section {
-	//padding: .1em;
-	//border: 1px solid darkblue;
 }
 
 #streamlist table tr th {

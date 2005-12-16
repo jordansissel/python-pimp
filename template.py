@@ -34,26 +34,38 @@ class Template:
 
 	def replicateElement(self, element, data, index):
 		newelement = element.cloneNode(1)
-
 		for k in data.keys():
-			el = self.getElementById(k, newelement)
-			if (not el is None):
-				el.setAttribute("id", "%s.%d" % (k,index))
-				el.appendChild(self.dom.createTextNode("%s" % data[k]))
-			else:
-				print "NO ELEMENT FOUND"
+			(type,key) = k.split(":",2)
+			repmethod = getattr(self, "rep_%s" % type, None)
+			if not repmethod is None:
+				repmethod(key, data[k], newelement)
 
 		return newelement
+
+	def rep_baseattr(self, key, val, base):
+		base.setAttribute(key, val)
+	
+	def rep_id(self, key, val, base):
+		el = self.getElementById(key, base)
+		if (not el is None):
+			el.setAttribute("id", "%s.%d" % (key,1))
+			el.appendChild(self.dom.createTextNode("%s" % val))
+		else:
+			print "NO ELEMENT FOUND"
 
 	def output(self, writer):
 		self.dom.writexml(writer);
 
 if __name__ == "__main__":
 	import sys
-	t = Template("static/layout.html")
+	t = Template("templates/layout.html")
 	data = [
-		{ "_streamname": "whack", "_currentsong": "[Bjork] Something Nutty - I attack reporters" },
-		{ "_streamname": "work", "_currentsong": "[Green Day] Dookie - Razzle!" },
+		{ "baseattr:onclick": "javascript:" },
+		{ "id:_streamname": "whack",
+		  "id:_currentsong": "[Bjork] Something Nutty - I attack reporters" 
+		},
+		{ "id:_streamname": "work", "id:_currentsong": "[Green Day] Dookie - Razzle!" },
+
 	]
 	t.replicate("_streamentry", data)
 	t.output(sys.stdout)

@@ -8,6 +8,39 @@
 	<div class="titlebar">
 		<h4>Pimp 4.0</h4>
 	</div>
-	<div id="content" />
+	<div id="searchbar">
+		<div align="right">
+			<script type="text/javascript">function noop() { ; }</script>
+			<form action="javascript:noop()">
+			Search for music:
+			<input id="query" type="text" size="35" />
+			<input type="submit" id="test" value="Search!" />
+			</form>
+		</div>
+	</div>
+
+	<div class="content" id="container">
+		<div id="streamlist_pane" class="pane">
+			<div class="section">
+				<div id="streamlist" style="padding:0px !important">
+					<table id="streamlist_table" cellspacing="0" cellpadding="0">
+						<tr>
+							<th style="width:10em" nowrap="1"> Stream Name </th>
+							<th width="100%"> Current Song </th>
+							<th> Clients </th>
+						</tr>
+						<tr id="_streamentry">
+							<td id="_streamname" />
+							<td id="_currentsong" />
+							<td id="_clients" />
+						</tr>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+	<div id="debug"/>
 </body>
 </html>

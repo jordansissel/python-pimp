@@ -85,11 +85,7 @@ input[type="text"] {
 }
 
 .pane {
-	position: absolute;
-	top: 0px;
-	left: 0px;
 	width: 100%;
-	display: none;
 }
 
 .pane > * {

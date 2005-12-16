@@ -10,7 +10,9 @@ class Template:
 	def getElementById(self, id, doc=None):
 		if (doc is None):
 			doc = self.dom.documentElement
-		return xpath.Evaluate("/html/body//*[@id='%s']" % id, doc)[0]
+		query = ".//*[@id='%s']" % id
+		e = xpath.Evaluate(query, doc)
+		return (len(e) > 0) and e[0] or None
 
 	def setTextById(self, id, text):
 		element = self.getElementById(id)
@@ -21,24 +23,25 @@ class Template:
 	def replicate(self, id, data):
 		original = self.getElementById(id)
 		parent = original.parentNode
-		data.reverse()
-		print "Data: %s" % data
+		x = 0
 		for d in data:
-			parent.appendChild(self.replicateElement(original, d))
+			newel = self.replicateElement(original, d, x)
+			newel.setAttribute("id", "%s.%d" % (id,x))
+			parent.appendChild(newel)
+			x += 1
 
-		# Remove the template
-		#print "Removing %s from %s" % (original.nodeName, parent.nodeName)
 		parent.removeChild(original)
 
-	def replicateElement(self, element, data):
+	def replicateElement(self, element, data, index):
 		newelement = element.cloneNode(1)
-		x = 0
 
 		for k in data.keys():
 			el = self.getElementById(k, newelement)
-			el.setAttribute("id", "dup.%d" % x)
-			el.appendChild(self.dom.createTextNode(data[k]))
-			x = x + 1
+			if (not el is None):
+				el.setAttribute("id", "%s.%d" % (k,index))
+				el.appendChild(self.dom.createTextNode("%s" % data[k]))
+			else:
+				print "NO ELEMENT FOUND"
 
 		return newelement
 
@@ -47,6 +50,10 @@ class Template:
 
 if __name__ == "__main__":
 	import sys
-	t = Template("test/layout.html")
-	t.replicate("row", [ {"one": "onetest", "two": "twotest"}, {"one": "threetest", "two": "fourtest" }])
+	t = Template("static/layout.html")
+	data = [
+		{ "_streamname": "whack", "_currentsong": "[Bjork] Something Nutty - I attack reporters" },
+		{ "_streamname": "work", "_currentsong": "[Green Day] Dookie - Razzle!" },
+	]
+	t.replicate("_streamentry", data)
 	t.output(sys.stdout)

@@ -15,6 +15,9 @@ import random
 from pysqlite2 import dbapi2 as sqlite
 import pyid3lib
 
+# stuff I wrote
+from template import Template
+
 ### XXX: Change this to your media directory if you want pimp to work
 # XXX: Move this to some configuration-file thing.
 MEDIAPATH = "/media/Audio"
@@ -535,7 +538,28 @@ class SearchPageGeneratorPlug(GeneratorPlug): #{{{
 </html>
 """)
 # }}}
-#}}}
+class StreamListPageGeneratorPlug(GeneratorPlug): #{{{
+	def process(self):
+		r = self.request
+		r.send_response(200)
+		r.send_header("Content-type", SendContentPlug.content_type["html"])
+		r.end_headers()
+
+		t = Template("static/layout.html")
+		list = []
+		for stream in streamlist:
+			print "Stream %s" % stream
+			s = streamlist[stream]
+			list.append({
+				"_streamname": stream,
+				"_currentsong": "[%s] %s - %s" % (s.song["artist"], s.song["album"], s.song["title"]),
+				"_clients": len(s.clients)
+				})
+
+		t.replicate("_streamentry", list)
+		t.output(r.wfile)
+# }}}
+# }}}
 
 class GenerateContentPlug(Plug):#{{{
 	"""
@@ -545,8 +569,9 @@ class GenerateContentPlug(Plug):#{{{
 	"""
 
 	generators = {
-		"streamlist": StreamListGeneratorPlug,
 		"search": SearchPageGeneratorPlug,
+		"streamlist": StreamListPageGeneratorPlug,
+		"streamlist.txt": StreamListGeneratorPlug,
 	}
 
 	def process(self):

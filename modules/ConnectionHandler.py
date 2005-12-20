@@ -11,11 +11,12 @@ from Error404Plug import Error404Plug
 from SendContentPlug import SendContentPlug
 from GenerateContentPlug import GenerateContentPlug
 
+from MusicDB import MusicDB
 
 class ConnectionHandler(Thread):
 	"""Handle connections from clients. Pass them off to the appropriate handler """
 
-	def __init__(self, port=8000):
+	def __init__(self, port=8001):
 		self.port = port
 		self.done = False
 		self.server = SocketServer.ThreadingTCPServer(('', self.port),

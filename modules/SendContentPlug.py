@@ -1,4 +1,6 @@
 
+import os
+
 from Plug import Plug
 class SendContentPlug(Plug):
 	def process(self):

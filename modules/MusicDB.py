@@ -13,6 +13,7 @@ class MusicDB(Thread):
 	def __init__(self):
 		self.needinit = 0
 		self.dbpath = "%s/.pimpdb" % os.getenv("HOME")
+		self.streamlist = {}
 		sqlite.register_adapter(str, adapt_string)
 		sqlite.register_converter('VARCHAR', decode_string)
 
@@ -171,6 +172,7 @@ class MusicDB(Thread):
 			results.append(entry)
 
 		return results
+
 
 # Unicode sucks, use ASCII
 def decode_string(val):

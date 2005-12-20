@@ -1,4 +1,5 @@
 
+from SendContentPlug import SendContentPlug
 from Plug import Plug
 class ControlWebPlug(Plug):
 	def process(self):

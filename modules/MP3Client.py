@@ -1,3 +1,5 @@
+from MP3Stream import MP3Stream
+import socket
 
 class MP3Client: 
 	def __init__(self, plug):
@@ -17,11 +19,11 @@ class MP3Client:
 		except:
 			print "Failed host lookup for %s" % self.yourhost
 
-		if streamlist.has_key(self.request.path):
-			self.stream = streamlist[self.request.path]
+		if self.plug.musicdb.streamlist.has_key(self.request.path):
+			self.stream = self.plug.musicdb.streamlist[self.request.path]
 		else:
 			self.stream = MP3Stream(self.request.path)
-			streamlist[self.request.path] = self.stream
+			self.plug.musicdb.streamlist[self.request.path] = self.stream
 
 		self.stream.register_client(self)
 
@@ -39,9 +41,9 @@ class MP3Client:
 		self.output.write("%s\n\n" % "\n".join(response))
 	
 	def broadcast(self):
-		clientlist.append(self)
+		#clientlist.append(self)
 		print "New client: %s" % self
-		print map(lambda x: "%s" % x, clientlist)
+		#print map(lambda x: "%s" % x, clientlist)
 		self.respond()
 
 		try:
@@ -53,9 +55,9 @@ class MP3Client:
 		except socket.error:
 			print "SERVER: Client %s:%d disconnected or died" \
 				% (self.yourhost,self.yourport)
-			if clientlist.index(self) > -1:
-				self.stream.kill_client(self)
-				clientlist.remove(self)
-			else:
-				print "Disconnected client not found in client list (UNEXPECTED ERROR)"
+			self.stream.kill_client(self)
+			#if clientlist.index(self) > -1:
+				#clientlist.remove(self)
+			#else:
+				#print "Disconnected client not found in client list (UNEXPECTED ERROR)"
 

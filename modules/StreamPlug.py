@@ -1,4 +1,6 @@
 
+from MP3Client import MP3Client
+
 from Plug import Plug
 class StreamPlug(Plug):
 	def process(self):

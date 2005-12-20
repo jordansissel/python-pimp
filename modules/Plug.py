@@ -1,4 +1,7 @@
 
+from MusicDB import MusicDB
+import os
+
 class Plug:
 	content_type = {
 		"css": "text/css",
@@ -8,8 +11,9 @@ class Plug:
 		"png": "image/png",
 	}
 
-	def __init__(self,request):
+	def __init__(self, request):
 		self.request = request
+		self.musicdb = MusicDB.instance
 	
 	def sendfile(self, src):
 		if not os.path.isfile(src):

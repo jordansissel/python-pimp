@@ -1,6 +1,12 @@
 
+from MusicDB import MusicDB
+import xmlrpclib
+
 class RPC:
 	ofunc = None
+	def __init__(self):
+		self.streamlist = MusicDB.instance.streamlist
+
 	def call(self, method, params, ofunc):
 		self.ofunc = ofunc
 		print "Calling RPC Method %s" % method
@@ -37,7 +43,7 @@ class RPC:
 
 	def call_next_song(self, params):
 		name = params[0]["stream"]
-		stream = streamlist[name]
+		stream = self.streamlist[name]
 		stream.nextsong()
 		self.respond({ 
 						 "songdata": stream.song,
@@ -46,11 +52,11 @@ class RPC:
 
 	def call_list_streams(self, params):
 		results = {}
-		for stream in streamlist:
+		for stream in self.streamlist:
 			results[stream] = { 
-				"song": streamlist[stream].song,
+				"song": self.streamlist[stream].song,
 				"streaminfo": {
-					"clients": len(streamlist[stream].clients)
+					"clients": len(self.streamlist[stream].clients)
 				}
 			}
 		self.respond(results)
@@ -59,7 +65,7 @@ class RPC:
 		print "Enqueue called"
 		params = params[0]
 		print params
-		stream = streamlist[params["stream"]]
+		stream = self.streamlist[params["stream"]]
 		stream.enqueue(params["list"]);
 		self.respond("ok")
 	

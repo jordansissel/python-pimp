@@ -10,15 +10,16 @@ class StreamListGeneratorPlug(GeneratorPlug): #{{{
 		r.send_response(200)
 		r.send_header("Content-type", "text/plain")
 		r.end_headers()
+		sl = self.musicdb.streamlist
 
 		r.wfile.write("Streams List\n")
-		for stream in streamlist:
+		for stream in sl:
 			r.wfile.write("%s\n" % (stream))
-			r.wfile.write("   Clients: %d\n" % len(streamlist[stream].clients))
+			r.wfile.write("   Clients: %d\n" % len(sl[stream].clients))
 			r.wfile.write("   Current Song:\n")
-			r.wfile.write("     Artist: %s\n" % streamlist[stream].song["artist"])
-			r.wfile.write("     Album: %s\n" % streamlist[stream].song["album"])
-			r.wfile.write("     Track: %s\n" % streamlist[stream].song["title"])
+			r.wfile.write("     Artist: %s\n" % sl[stream].song["artist"])
+			r.wfile.write("     Album: %s\n" % sl[stream].song["album"])
+			r.wfile.write("     Track: %s\n" % sl[stream].song["title"])
 # }}}
 class StreamControlGeneratorPlug(GeneratorPlug): #{{{
 	def process(self):
@@ -27,14 +28,16 @@ class StreamControlGeneratorPlug(GeneratorPlug): #{{{
 		r.send_header("Content-type", "text/plain")
 		r.end_headers()
 
+		sl = self.musicdb.streamlist
+
 		r.wfile.write("Streams List\n")
-		for stream in streamlist:
+		for stream in sl:
 			r.wfile.write("%s\n" % (stream))
-			r.wfile.write("   Clients: %d\n" % len(streamlist[stream].clients))
+			r.wfile.write("   Clients: %d\n" % len(sl[stream].clients))
 			r.wfile.write("   Current Song:\n")
-			r.wfile.write("     Artist: %s\n" % streamlist[stream].song["artist"])
-			r.wfile.write("     Album: %s\n" % streamlist[stream].song["album"])
-			r.wfile.write("     Track: %s\n" % streamlist[stream].song["title"])
+			r.wfile.write("     Artist: %s\n" % sl[stream].song["artist"])
+			r.wfile.write("     Album: %s\n" % sl[stream].song["album"])
+			r.wfile.write("     Track: %s\n" % sl[stream].song["title"])
 # }}}
 class SearchPageGeneratorPlug(GeneratorPlug): #{{{
 	def process(self):
@@ -67,24 +70,7 @@ class StreamListPageGeneratorPlug(GeneratorPlug): #{{{
 		r.send_header("Content-type", Plug.content_type["html"])
 		r.end_headers()
 
-		t = Template("templates/layout.html")
-		list = []
-		x = 0
-		for stream in streamlist:
-			print "Stream %s" % stream
-			s = streamlist[stream]
-			list.append({
-				"baseattr:onclick": "stream_drilldown('%s')" % stream,
-				"baseattr:class": x % 2 and "even" or "odd",
-				"id:_streamname": stream,
-				"id:_currentsong": "[%s] %s - %s" % (s.song["artist"], s.song["album"], s.song["title"]),
-				"id:_clients": len(s.clients)
-				})
-			x += 1
-
-		t.replicate("_streamentry", list)
-		t.output(r.wfile)
-# }}}
+		self.sendfile("templates/layout.html")
 # }}}
 
 from template import Template

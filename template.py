@@ -32,13 +32,22 @@ class Template:
 
 		parent.removeChild(original)
 
-	def replicateElement(self, element, data, index):
+	def NEW_replicateElement(self, element, data, index):
 		newelement = element.cloneNode(1)
 		for k in data.keys():
 			(type,key) = k.split(":",2)
 			repmethod = getattr(self, "rep_%s" % type, None)
 			if not repmethod is None:
 				repmethod(key, data[k], newelement)
+
+		return newelement
+
+	def replicateElement(self, element, data, index):
+		newelement = element.cloneNode(1)
+		for k in data.keys():
+			repmethod = getattr(self, "rep_%s" % "id", None)
+			if not repmethod is None:
+				repmethod(k, data[k], newelement)
 
 		return newelement
 
@@ -60,11 +69,10 @@ if __name__ == "__main__":
 	import sys
 	t = Template("templates/layout.html")
 	data = [
-		{ "baseattr:onclick": "javascript:" },
-		{ "id:_streamname": "whack",
-		  "id:_currentsong": "[Bjork] Something Nutty - I attack reporters" 
+		{ "_streamname": "whack",
+		  "_currentsong": "[Bjork] Something Nutty - I attack reporters" 
 		},
-		{ "id:_streamname": "work", "id:_currentsong": "[Green Day] Dookie - Razzle!" },
+		{ "_streamname": "work", "id:_currentsong": "[Green Day] Dookie - Razzle!" },
 
 	]
 	t.replicate("_streamentry", data)

@@ -1,6 +1,6 @@
 
 from Plug import Plug
-# Generator Plugs {{{
+from template import Template
 class GeneratorPlug(Plug): #{{{
 	pass
 #}}}
@@ -73,7 +73,18 @@ class StreamListPageGeneratorPlug(GeneratorPlug): #{{{
 		self.sendfile("templates/layout.html")
 # }}}
 
-from template import Template
+class StreamInfoPageGeneratorPlug(GeneratorPlug): #{{{
+	def process(self):
+		r = self.request
+		r.send_response(200)
+		r.send_header("Content-type", Plug.content_type["html"])
+		#r.send_header("Content-type", "text/html")
+		r.end_headers()
+
+		#t = Template("templates/streaminfo.html")
+		self.sendfile("templates/streaminfo.html")
+# }}}
+
 
 class GenerateContentPlug(Plug):
 	"""
@@ -86,11 +97,14 @@ class GenerateContentPlug(Plug):
 		"search": SearchPageGeneratorPlug,
 		"streamlist": StreamListPageGeneratorPlug,
 		"streamlist.txt": StreamListGeneratorPlug,
+
+		"streaminfo": StreamInfoPageGeneratorPlug,
 	}
 
 	def process(self):
 		r = self.request
-		generator = r.path.split("/")[2]
+		generator = r.path.split("/")[2].split("?")[0]
+		
 		if self.generators.has_key(generator):
 			handler = self.generators[generator](r)
 			handler.process()

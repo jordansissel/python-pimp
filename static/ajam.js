@@ -1,32 +1,14 @@
-
-function xmlrpc_callback() {
-	if (xmlrpc.readyState == 4) {
-		var doc = xmlrpc.responseXML;
-		if (!doc) {
-			debug("Pimp server is down or an error occurred")
-			// Server is down?
-			return
-		}
-		if (doc.childNodes[0].tagName != "methodResponse") {
-			debug("UNEXPECTED NON-XMLRPC RESPONSE FROM SERVER");
-			return;
-		}
-
-		var hash = rpcparam2hash(doc.childNodes[0]);
-		Object.dpDump(hash);
-		xmlrpc.mycallback(hash)
-	}
-}
-
-function call_xmlrpc(method, args, callback) {
+function callrpc(method, args, callback, url) {
 	if (!XMLHttpRequest) {
 		alert("Your browser is not supported")
 		return
 	}
+	if (!url)
+		url = "/xmlrpc/control";
 
 	var xmlrpc = new XMLHttpRequest();
 
-	xmlrpc.open("POST", "/xmlrpc/control", true);
+	xmlrpc.open("POST", url, true);
 	xmlrpc.setRequestHeader("Content-type", "text/xml");
 
 	var xml = "<methodCall>"
@@ -48,17 +30,32 @@ function call_xmlrpc(method, args, callback) {
 	xmlrpc.onreadystatechange = function() {
 		if (xmlrpc.readyState == 4) {
 			var doc = xmlrpc.responseXML;
-			if (!doc) {
+			var type = xmlrpc.getResponseHeader("Content-type");
+			if (!type) {
 				debug("Pimp server is down or an error occurred")
 				return
 			}
-			if (doc.childNodes[0].tagName != "methodResponse") {
-				debug("UNEXPECTED NON-XMLRPC RESPONSE FROM SERVER");
-				return;
+
+
+			debug("Type: " + type)
+			if (type == "text/xml") {
+				if (doc.childNodes[0].tagName != "methodResponse") {
+					debug("UNEXPECTED NON-XMLRPC RESPONSE FROM SERVER");
+					return;
+				}
+				var hash = rpcparam2hash(doc.childNodes[0]);
+				xmlrpc.mycallback(hash)
+			} else if (type == "application/xhtml+xml") {
+				//Object.dpDump(xmlrpc)
+				xmlrpc.mycallback(xmlrpc)
+			} else if (type == "text/html") {
+				xmlrpc.mycallback(xmlrpc)
+			} else if (type = "text/plain") {
+				xmlrpc.mycallback(xmlrpc.responseText)
+			} else {
+				debug("UNEXPECTED NON XML/HTML/PLAIN RESPONSE FROM SERVER");
 			}
 
-			var hash = rpcparam2hash(doc.childNodes[0]);
-			xmlrpc.mycallback(hash)
 		}
 	}
 
@@ -179,10 +176,13 @@ function rpcparam2hash(doc) {
 
 /* Useful recursive deletion of elements from a tree */
 
-function delete_children(element) {
+function delete_children(element, recursive) {
+	if (!recursive)
+		recursive=1
 	var len = element.childNodes.length;
 	for (var i = 0; i < len; i++) {
-		delete_children(element.childNodes[0]);
+		if (recursive)
+			delete_children(element.childNodes[0]);
 		element.removeChild(element.childNodes[0]);
 	}
 }

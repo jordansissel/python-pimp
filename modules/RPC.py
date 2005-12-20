@@ -34,8 +34,8 @@ class RPC:
 
 	def call_search(self, params):
 		results = []
-		print "PARAMS::::::"
-		print params
+		#print "PARAMS::::::"
+		#print params
 		query = params[0]["any"].split(" ");
 		MusicDB.instance.request(method="search_all_fields", args=query, result=results)
 		print "Found %d songs!!!" % len(results)

@@ -20,7 +20,7 @@ function loadfunc() {
 	//fixpositions();
 
 	/* Load the streams list */
-	call_xmlrpc("list_streams", {}, liststreams_callback)
+	callrpc("list_streams", {}, liststreams_callback)
 	start_timers()
 
 	document.getElementById("streamlist_pane").style.display="block";
@@ -48,7 +48,7 @@ function start_timers() {
 }
 
 function call_updatestreams() {
-	call_xmlrpc("list_streams", {}, liststreams_callback)
+	callrpc("list_streams", {}, liststreams_callback)
 	setTimeout(call_updatestreams, 30000)
 }
 
@@ -173,7 +173,7 @@ function updatestreampane(name) {
 
 function nextfunc() {
 	debug("Calling 'next_song' on stream '"+ this.streamname +"'");
-	call_xmlrpc("next_song", {"stream":this.streamname}, nextsong_callback);
+	callrpc("next_song", {"stream":this.streamname}, nextsong_callback);
 }
 
 function nextsong_callback(params) {
@@ -190,7 +190,7 @@ function refreshcallback(params) {
 	song = document.getElementById(basename + ":song");
 	song.childNodes[0].nodeValue = prettysong(params[0]["songdata"]);
 
-	//call_xmlrpc("list_streams", {}, liststreams_callback)
+	//callrpc("list_streams", {}, liststreams_callback)
 	var streampane = document.getElementById("streamcontrol_pane");
 	//debug("Foo: " + streampane)
 	if (streampane.stream == params[0]["streamname"]) {
@@ -205,7 +205,7 @@ function searchclickfunc() {
 	debug("Calling xmlrpc method 'search'")
 	query = document.getElementById("query").value;
 	debug("Query was '" + query + "'")
-	call_xmlrpc("search", {any: query}, searchclick_callback)
+	callrpc("search", {any: query}, searchclick_callback)
 }
 
 
@@ -227,24 +227,21 @@ function debug(val) {
 	foo.style.fontWeight="bold";
 	foo.appendChild(text)
 	list.appendChild(foo)
-	list.style.display="none";
+	//list.style.display="none";
 }
 
 function stream_drilldown() {
-	var listpane = document.getElementById("streamlist_pane");
-	var streampane = document.getElementById("streamcontrol_pane");
-
 	// Show the searchbar now that we've selected a stream
-	document.getElementById("searchbar").style.display="block";
-
-	listpane.style.display = "none";
-	streampane.style.display = "block";
+	//document.getElementById("searchbar").style.display="block";
 
 	pimp["currentstream"] = this.id.substr(7);
 	debug("Drilling into " + this.id.substr(7));
-	populate_stream_pane(this.id.substr(7));
 
-	//Object.dpDump(pimp["streams"])
+	/* Ask pimp to generate us a stream entry page */
+	//callrpc("load_stream", {"stream":this.id}, loadstream, "/dynamic/streaminfo?"+this.id);
+	
+	loader = loadstream
+	document.getElementById("loaderframe").src="http://kenya.csh.rit.edu:8003/"
 }
 
 function populate_stream_pane(streamname) {
@@ -259,8 +256,8 @@ function populate_stream_pane(streamname) {
 		song.childNodes[0].nodeValue = prettysong(pimp["streams"][streamname]["song"])
 
 		var button = document.getElementById("next-song")
-		//button.addEventListener(clickevent, function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);}, false);
-		button.onclick = function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);};
+		//button.addEventListener(clickevent, function() {callrpc("next_song", {"stream":streamname}, refreshcallback);}, false);
+		button.onclick = function() {callrpc("next_song", {"stream":streamname}, refreshcallback);};
 	debug("Drilling into " + this.id.substr(7));
 	} else {
 		var section = mkelement("div");
@@ -279,8 +276,8 @@ function populate_stream_pane(streamname) {
 		nextbutton.id="next-song";
 		nextbutton.value="Next song";
 		nextbutton.type="button";
-		//nextbutton.addEventListener(clickevent, function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);}, false);
-		nextbutton.onclick = function() {call_xmlrpc("next_song", {"stream":streamname}, refreshcallback);};
+		//nextbutton.addEventListener(clickevent, function() {callrpc("next_song", {"stream":streamname}, refreshcallback);}, false);
+		nextbutton.onclick = function() {callrpc("next_song", {"stream":streamname}, refreshcallback);};
 
 		section.appendChild(title);
 		section.appendChild(song);
@@ -446,11 +443,28 @@ function enqueue_items() {
 		list.push(enqueuediv.childNodes[i].songid)
 	}
 
-	call_xmlrpc("enqueue", {stream: pimp["currentstream"], list: list}, enqueue_callback);
+	callrpc("enqueue", {stream: pimp["currentstream"], list: list}, enqueue_callback);
 }
 
 function enqueue_callback() {
 	debug("Enqueue callback success?");
+}
+
+function loadstream() {
+	var ifr = document.getElementById("loaderframe")
+
+	//Object.dpDump(ifr)
+	//for (a in ifr) {
+		//debug("ifr: " + a + " => " + ifr[a])
+	//}
+	var p = document.getElementById("container")
+	delete_children(p)
+	//p.appendChild(doc.responseXML.childNodes[0])
+	p.appendChild(ifr.contentDocument.childNodes[0])
+}
+
+function pageload() {
+	loader()
 }
 
 window.onload = loadfunc;

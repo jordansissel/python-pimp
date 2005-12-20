@@ -1,10 +1,21 @@
 
+from threading import Thread, Event
+import os
+import Queue
+import random
+
+from pysqlite2 import dbapi2 as sqlite
+import pyid3lib
+
 class MusicDB(Thread):
 	instance = None
 
 	def __init__(self):
 		self.needinit = 0
 		self.dbpath = "%s/.pimpdb" % os.getenv("HOME")
+		sqlite.register_adapter(str, adapt_string)
+		sqlite.register_converter('VARCHAR', decode_string)
+
 
 		if not os.path.isfile(self.dbpath):
 			print "Need to create db"
@@ -160,3 +171,11 @@ class MusicDB(Thread):
 			results.append(entry)
 
 		return results
+
+# Unicode sucks, use ASCII
+def decode_string(val):
+   return val
+
+def adapt_string(val):
+   return unicode(val).encode("US-ASCII")
+

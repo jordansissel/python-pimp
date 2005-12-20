@@ -1,15 +1,6 @@
 
-import Plug
+from Plug import Plug
 class SendContentPlug(Plug):
-	content_type = {
-		"css": "text/css",
-		#"html": "text/html",
-		"html": "application/xhtml+xml",
-		"js": "text/javascript",
-		"jpg": "image/jpeg",
-		"png": "image/png",
-	}
-
 	def process(self):
 		r = self.request
 		path = "/".join(r.path.split("/")[1:])

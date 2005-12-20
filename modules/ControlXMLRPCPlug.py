@@ -1,5 +1,8 @@
 
-import Plug
+import xmlrpclib
+
+from Plug import Plug
+from RPC import RPC
 class ControlXMLRPCPlug(Plug):
 	def process(self):
 		r = self.request

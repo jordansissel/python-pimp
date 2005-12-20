@@ -1,5 +1,5 @@
 
-import Plug
+from Plug import Plug
 class RedirectPlug(Plug):
 	def process(self):
 		r = self.request

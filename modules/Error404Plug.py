@@ -1,5 +1,5 @@
 
-import Plug
+from Plug import Plug
 class Error404Plug(Plug):
 	def process(self):
 		r = self.request

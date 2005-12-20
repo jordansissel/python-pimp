@@ -1,5 +1,5 @@
 
-import Plug
+from Plug import Plug
 class StreamPlug(Plug):
 	def process(self):
 		client = MP3Client(self)

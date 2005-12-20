@@ -1,5 +1,5 @@
 
-import Plug
+from Plug import Plug
 # Generator Plugs {{{
 class GeneratorPlug(Plug): #{{{
 	pass
@@ -64,7 +64,7 @@ class StreamListPageGeneratorPlug(GeneratorPlug): #{{{
 	def process(self):
 		r = self.request
 		r.send_response(200)
-		r.send_header("Content-type", SendContentPlug.content_type["html"])
+		r.send_header("Content-type", Plug.content_type["html"])
 		r.end_headers()
 
 		t = Template("templates/layout.html")
@@ -86,6 +86,8 @@ class StreamListPageGeneratorPlug(GeneratorPlug): #{{{
 		t.output(r.wfile)
 # }}}
 # }}}
+
+from template import Template
 
 class GenerateContentPlug(Plug):
 	"""

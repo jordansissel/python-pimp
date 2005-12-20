@@ -1,5 +1,13 @@
 
 class Plug:
+	content_type = {
+		"css": "text/css",
+		"html": "application/xhtml+xml",
+		"js": "text/javascript",
+		"jpg": "image/jpeg",
+		"png": "image/png",
+	}
+
 	def __init__(self,request):
 		self.request = request
 	

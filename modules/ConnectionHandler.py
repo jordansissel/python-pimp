@@ -12,7 +12,6 @@ from SendContentPlug import SendContentPlug
 from GenerateContentPlug import GenerateContentPlug
 from JSONRPCPlug import JSONRPCPlug
 
-
 from MusicDB import MusicDB
 
 class ConnectionHandler(Thread):

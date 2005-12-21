@@ -6,6 +6,7 @@ class Plug:
 	content_type = {
 		"css": "text/css",
 		"html": "application/xhtml+xml",
+		#"html": "text/html",
 		"js": "text/javascript",
 		"jpg": "image/jpeg",
 		"png": "image/png",

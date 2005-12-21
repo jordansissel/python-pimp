@@ -8,28 +8,34 @@ html,body {
 .titlebar {
 	background-color: #DDEEFF;
 	border-bottom: 1px solid black;
-	padding-top: 1em;
 	padding-left: 1em;
-	padding-right: 1em;
 	font-weight: bold;
-	font-variant: small-caps;
 }
 
 .titlebar h4 {
 	margin: 0px;
 	padding: 0px;
-	margin-right: 3em;
 	font-size: 36pt;
 	display: inline;
 }
 
 .content {
 	margin: 1em;
+	margin-top: 2em;
 }
 
 input[type="text"] {
 	border: 1px inset black;
 	background-color: lightyellow;
+}
+
+input[type="submit"], input[type="button"] {
+	border: 1px solid grey;
+	background-color: #DDDDEE;
+}
+
+input[type="submit"]:hover, input[type="button"]:hover {
+	background-color: #EEEEDD;
 }
 
 #streamlist table tr th {
@@ -83,7 +89,6 @@ input[type="text"] {
 }
 
 .pane > * {
-	margin: 1em;
 	border: 1px solid black;
 }
 
@@ -178,6 +183,33 @@ input[type="text"] {
 	text-align: center;
 }
 
-#searchbar {
-	display: none;
+/* Menu bar */
+#menubar {
+	/*display: none;*/
+	height: 1em;
 }
+
+#searchbar {
+	padding-top: 2px;
+	float: right;
+}
+
+#tabs {
+	float: left;
+}
+
+.tab {
+	background-color: #EAF3F8;
+	padding-left: .5em;
+	padding-right: .5em;
+	font-weight: bold;
+	font-variant: small-caps;
+	font-size: 1.2em;
+}
+
+
+/* Stream View */
+#streamview_pane {
+	background-color: #EEEEFF;
+}
+

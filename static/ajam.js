@@ -45,13 +45,10 @@ function callrpc(method, args, callback, url) {
 				}
 				var hash = rpcparam2hash(doc.childNodes[0]);
 				xmlrpc.mycallback(hash)
-			} else if (type = "text/json") {
+			} else if (type == "text/plain") {
 				debug("JSON processing")
-				var params;
-				eval("params = " + xmlrpc.responseText);
+				eval("var params = " + xmlrpc.responseText);
 				xmlrpc.mycallback(params)
-			} else if (type = "text/plain") {
-				xmlrpc.mycallback(xmlrpc.responseText)
 			} else {
 				debug("UNEXPECTED NON XML/HTML/PLAIN RESPONSE FROM SERVER");
 			}

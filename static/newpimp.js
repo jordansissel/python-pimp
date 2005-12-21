@@ -218,7 +218,10 @@ function stream_drilldown() {
 	debug("Drilling into " + this.id.substr(7));
 
 	/* Ask pimp to generate us a stream entry page */
-	callrpc("load_stream", {"stream":this.id}, loadstream);
+	var pane = document.getElementById("streamlist_pane");
+	callrpc("loadstream", {"stream":this.id.substr(7)}, loadstream_callback);
+	Effect.Fade(pane, 1000);
+
 }
 
 function populate_stream_pane(streamname) {
@@ -427,18 +430,35 @@ function enqueue_callback() {
 	debug("Enqueue callback success?");
 }
 
-function loadstream() {
-	/* Ask the server about the stream */
-	callrpc("loadstream", {'stream': pimp["currentstream"]}, loadstream_callback)
-}
-
 function loadstream_callback(params) {
-	debug("LOADSTREAM")
-	Object.dpDump(params)
-}
+	var streamdoc;
 
-function pageload() {
-	loader()
+	streamdoc = mkelement("div");
+	streamdoc.id = "streaminfo_pane";
+
+	var titlebar = mkelement("div");
+	var titlename = mkelement("div");
+	titlename.appendChild(mktext(params["name"] + " (/stream/blah)"));
+	var clientnum = mkelement("span");
+	clientnum.appendChild(mktext("[" + params["clients"] + " clients]"));
+	clientnum.style.fontSize = "small";
+	clientnum.style.float = "right";
+
+	titlebar.appendChild(titlename);
+	titlebar.appendChild(clientnum);
+
+	titlebar.style.borderLeft = "1em solid #8899DD";
+	titlebar.style.borderBottom = "3px solid #8899DD";
+	titlebar.style.paddingLeft = "3px";
+	titlebar.style.fontWeight = "bold";
+
+	streamdoc.appendChild(titlebar);
+	streamdoc.appendChild(mktext("this is a test... hurray"));
+
+	streamdoc.style.opacity = 0;
+	document.getElementById("container").appendChild(streamdoc);
+
+	setTimeout(function() { Effect.Appear(streamdoc, 1000); }, 1);
 }
 
 window.onload = loadfunc;

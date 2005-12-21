@@ -10,6 +10,8 @@ from StreamPlug import StreamPlug
 from Error404Plug import Error404Plug
 from SendContentPlug import SendContentPlug
 from GenerateContentPlug import GenerateContentPlug
+from JSONRPCPlug import JSONRPCPlug
+
 
 from MusicDB import MusicDB
 
@@ -38,6 +40,7 @@ class ConnectionHandler(Thread):
 			'': RedirectPlug,
 			'control': ControlWebPlug,
 			'xmlrpc': ControlXMLRPCPlug,
+			'json': JSONRPCPlug,
 			'content': SendContentPlug,
 			'static': SendContentPlug,
 			'dynamic': GenerateContentPlug,

@@ -4,7 +4,7 @@ function callrpc(method, args, callback, url) {
 		return
 	}
 	if (!url)
-		url = "/xmlrpc/control";
+		url = "/json/control";
 
 	var xmlrpc = new XMLHttpRequest();
 
@@ -36,26 +36,25 @@ function callrpc(method, args, callback, url) {
 				return
 			}
 
-
 			debug("Type: " + type)
 			if (type == "text/xml") {
+				debug("xml processing");
 				if (doc.childNodes[0].tagName != "methodResponse") {
 					debug("UNEXPECTED NON-XMLRPC RESPONSE FROM SERVER");
 					return;
 				}
 				var hash = rpcparam2hash(doc.childNodes[0]);
 				xmlrpc.mycallback(hash)
-			} else if (type == "application/xhtml+xml") {
-				//Object.dpDump(xmlrpc)
-				xmlrpc.mycallback(xmlrpc)
-			} else if (type == "text/html") {
-				xmlrpc.mycallback(xmlrpc)
+			} else if (type = "text/json") {
+				debug("JSON processing")
+				var params;
+				eval("params = " + xmlrpc.responseText);
+				xmlrpc.mycallback(params)
 			} else if (type = "text/plain") {
 				xmlrpc.mycallback(xmlrpc.responseText)
 			} else {
 				debug("UNEXPECTED NON XML/HTML/PLAIN RESPONSE FROM SERVER");
 			}
-
 		}
 	}
 
@@ -185,5 +184,20 @@ function delete_children(element, recursive) {
 			delete_children(element.childNodes[0]);
 		element.removeChild(element.childNodes[0]);
 	}
+}
+
+var debugcnt = 0
+function debug(val) {
+	debugcnt++;
+	var list = document.getElementById("debug");
+	var foo = mkelement("div");
+	var text = mktext(debugcnt + ": " + val);
+	foo.style.fontWeight="bold";
+	foo.appendChild(text);
+	list.appendChild(foo);
+}
+
+function cleardebug() {
+	delete_children(document.getElementById("debug"))
 }
 

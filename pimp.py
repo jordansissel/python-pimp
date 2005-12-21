@@ -4,6 +4,7 @@ import sys
 import urllib 
 
 sys.path.append("./modules")
+sys.path.append("./extra")
 
 # stuff I wrote
 from template import Template

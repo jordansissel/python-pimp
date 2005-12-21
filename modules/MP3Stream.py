@@ -1,6 +1,6 @@
 from MusicDB import MusicDB
 
-class MP3Stream: 
+class MP3Stream:
 	def __init__(self, request, name="Unknown Stream"):
 		#self.music = MusicList()
 		self.clients = []

@@ -1,11 +1,13 @@
 
 from MusicDB import MusicDB
 import xmlrpclib
+import json
 
 class RPC:
 	ofunc = None
 	def __init__(self):
 		self.streamlist = MusicDB.instance.streamlist
+		self.respond = self.json_respond
 
 	def call(self, method, params, ofunc):
 		self.ofunc = ofunc
@@ -13,7 +15,7 @@ class RPC:
 		func = getattr(self, "call_%s" % method, self.invalidcall)
 		func(params)
 	
-	def respond(self, args):
+	def xmlrpc_respond(self, args):
 		m = xmlrpclib.Marshaller("US-ASCII", 1)
 
 		self.ofunc("<methodResponse>")
@@ -23,14 +25,9 @@ class RPC:
 		elif type(args) == type([]):
 			m.dump_array(args, self.ofunc)
 		self.ofunc("</methodResponse>")
-		
 
-	def call_control(self, params):
-		print "CONTROL"
-		hash = {
-			"result": str(int(params[0]["p1"]) + int(params[0]["p2"]))
-		}
-		self.respond(hash)
+	def json_respond(self, args):
+		self.ofunc(json.write(args))
 
 	def call_search(self, params):
 		results = []
@@ -68,8 +65,24 @@ class RPC:
 		stream = self.streamlist[params["stream"]]
 		stream.enqueue(params["list"]);
 		self.respond("ok")
-	
+
+	def call_loadstream(self, params):
+		print "Loadstream called"
+		params = params[0]
+		print params
+		stream = self.streamlist[params["stream"]]
+		
+		streaminfo = {
+			'song': stream.song,
+			'name': stream.name,
+			'clients': len(stream.clients),
+			'queue': stream.queue,
+		}
+
+		self.respond(streaminfo)
+
 	def invalidcall(self, params):
 		print "Invalid call"
 		print "Params: ", params
+		self.respond("INVALID CALL")
 

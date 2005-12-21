@@ -53,13 +53,13 @@ function call_updatestreams() {
 }
 
 function liststreams_callback(params) {
-	var idx = 0
+	var idx = 0;
 	var i;
-	
-	var updates = []
 
-	for (i in params[0]) {
-		updatestream(i, params[0][i], idx)
+	var updates = [];
+
+	for (i in params) {
+		updatestream(i, params[i], idx)
 		updates.push("stream:" + i)
 		idx++;
 	}
@@ -70,16 +70,13 @@ function liststreams_callback(params) {
 		var el = table.childNodes[i];
 		if (el.id) {
 			var found = 0
-			//debug(table.childNodes[i].tagName + ": " + table.childNodes[i].id)
 			for (var x = 0; x < updates.length && !found; x++) {
-				if (updates[x] == el.id) {
+				if (updates[x] == el.id)
 					found = 1;
-				}
 			}
 
-			if (!found) {
+			if (!found)
 				table.removeChild(el);
-			}
 
 		}
 	}
@@ -213,23 +210,6 @@ function searchclick_callback(params) {
 	showsearchresults(params[0]);
 }
 
-
-function cleardebug() {
-	// Delete children
-	//document.getElementById("debug").innerHTML = "";
-	delete_children(document.getElementById("debug"))
-}
-
-function debug(val) {
-	var list = document.getElementById("debug");
-	var foo = mkelement("div");
-	var text = mktext(val);
-	foo.style.fontWeight="bold";
-	foo.appendChild(text)
-	list.appendChild(foo)
-	//list.style.display="none";
-}
-
 function stream_drilldown() {
 	// Show the searchbar now that we've selected a stream
 	//document.getElementById("searchbar").style.display="block";
@@ -238,10 +218,7 @@ function stream_drilldown() {
 	debug("Drilling into " + this.id.substr(7));
 
 	/* Ask pimp to generate us a stream entry page */
-	//callrpc("load_stream", {"stream":this.id}, loadstream, "/dynamic/streaminfo?"+this.id);
-	
-	loader = loadstream
-	document.getElementById("loaderframe").src="http://kenya.csh.rit.edu:8003/"
+	callrpc("load_stream", {"stream":this.id}, loadstream);
 }
 
 function populate_stream_pane(streamname) {
@@ -451,16 +428,13 @@ function enqueue_callback() {
 }
 
 function loadstream() {
-	var ifr = document.getElementById("loaderframe")
+	/* Ask the server about the stream */
+	callrpc("loadstream", {'stream': pimp["currentstream"]}, loadstream_callback)
+}
 
-	//Object.dpDump(ifr)
-	//for (a in ifr) {
-		//debug("ifr: " + a + " => " + ifr[a])
-	//}
-	var p = document.getElementById("container")
-	delete_children(p)
-	//p.appendChild(doc.responseXML.childNodes[0])
-	p.appendChild(ifr.contentDocument.childNodes[0])
+function loadstream_callback(params) {
+	debug("LOADSTREAM")
+	Object.dpDump(params)
 }
 
 function pageload() {

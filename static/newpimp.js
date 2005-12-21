@@ -17,7 +17,6 @@ function loadfunc() {
 	var clicky = document.getElementById("test");
 	clicky.addEventListener(clickevent, searchclickfunc, false);
 
-	//fixpositions();
 
 	/* Load the streams list */
 	callrpc("list_streams", {}, liststreams_callback)
@@ -101,11 +100,9 @@ function updatestreamlist(name, idx) {
 	var basename = "stream:" + name;
 	if (streamentry) {
 		var songelement  = document.getElementById(basename + ":song");
+		//Interface.updateElementText(basename + ":song", currentsong);
 		var clientselement  = document.getElementById(basename + ":clients");
-
-		//debug("Testing: " + basename + ":song");
-		//debug("Songelement: " + songelement.childNodes[0].childnodeValue);
-		//debug("currentsong: " + currentsong);
+		//Interface
 		songelement.childNodes[0].nodeValue = currentsong;
 		clientselement.childNodes[0].nodeValue = streaminfo["streaminfo"]["clients"];
 	} else {
@@ -121,8 +118,6 @@ function updatestreamlist(name, idx) {
 		var tmpfunc = function(tag, val){
 			var el = mkelement(tag);
 			el.appendChild(mktext(val));
-			//el.style.height="1.15em";
-			//el.style.overflow="hidden";
 			return el;
 		}
 
@@ -141,16 +136,11 @@ function updatestreamlist(name, idx) {
 
 		streamrow.addEventListener(clickevent, stream_drilldown, false);
 
-		//debug("SN: " + streamname)
 		streamrow.appendChild(streamname);
 		streamrow.appendChild(streamsong);
 		streamrow.appendChild(streamclients);
 
-		// Append to table
-		//debug("Foo: " + table)
 		table.appendChild(streamrow)
-		//debug("A: " + table);
-		//debug("B: " + streamrow);
 	}
 }
 
@@ -457,6 +447,8 @@ function loadstream_callback(params) {
 
 	streamdoc.style.opacity = 0;
 	document.getElementById("container").appendChild(streamdoc);
+
+	Pimp.showStreamInfo(params);
 
 	setTimeout(function() { Effect.Appear(streamdoc, 1000); }, 1);
 }

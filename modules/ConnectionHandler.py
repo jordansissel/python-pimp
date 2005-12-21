@@ -17,7 +17,7 @@ from MusicDB import MusicDB
 class ConnectionHandler(Thread):
 	"""Handle connections from clients. Pass them off to the appropriate handler """
 
-	def __init__(self, port=8001):
+	def __init__(self, port=8003):
 		self.port = port
 		self.done = False
 		self.server = SocketServer.ThreadingTCPServer(('', self.port),

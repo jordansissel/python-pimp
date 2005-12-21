@@ -36,7 +36,7 @@ function callrpc(method, args, callback, url) {
 				return
 			}
 
-			debug("Type: " + type)
+			//debug("Type: " + type)
 			if (type == "text/xml") {
 				debug("xml processing");
 				if (doc.childNodes[0].tagName != "methodResponse") {
@@ -46,7 +46,7 @@ function callrpc(method, args, callback, url) {
 				var hash = rpcparam2hash(doc.childNodes[0]);
 				xmlrpc.mycallback(hash)
 			} else if (type == "text/plain") {
-				debug("JSON processing")
+				//debug("JSON processing")
 				eval("var params = " + xmlrpc.responseText);
 				xmlrpc.mycallback(params)
 			} else {

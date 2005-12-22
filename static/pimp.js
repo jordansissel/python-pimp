@@ -314,6 +314,7 @@ Pimp.showSearchResults = function(params) {/*{{{*/
 	
 	d.style.border = "1px outset black";
 	d.style.backgroundColor = "#EFF4FF";
+	d.style.opacity = 0;
 
 	for (var i = 0; i < params.length; i++) {
 		var sr = mkelement("div");
@@ -354,9 +355,11 @@ Pimp.showpane = function(pane, loop) {/*{{{*/
 		return;
 	}
 
-	if (e.style.display == "none")
-		e.style.display="block";
+	//if (e == Pimp.currentpane)
+		//return;
 
+	//if (e.style.display == "none")
+		//e.style.display="block";
 	Effect.Appear(e, 1000);
 	Pimp.currentpane = e;
 }/*}}}*/

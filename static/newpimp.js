@@ -17,7 +17,6 @@ function loadfunc() {
 	var clicky = document.getElementById("test");
 	clicky.addEventListener(clickevent, searchclickfunc, false);
 
-
 	/* Load the streams list */
 	callrpc("list_streams", {}, liststreams_callback)
 	start_timers()

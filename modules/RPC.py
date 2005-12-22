@@ -75,6 +75,7 @@ class RPC:
 		streaminfo = {
 			'song': stream.song,
 			'name': stream.name,
+			'path': params["stream"],
 			'clients': len(stream.clients),
 			'queue': stream.queue,
 		}

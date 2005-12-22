@@ -10,6 +10,8 @@ if (interface_type == "workstation") {
 Pimp = {}
 Pimp.initdone = 0;
 
+function chr(val) { return unescape("%" + val.toString(16)); }
+
 Pimp.init = function() {/*{{{*/
 	Pimp.streams = {};
 
@@ -17,15 +19,46 @@ Pimp.init = function() {/*{{{*/
 	Pimp.interval(Pimp.liststreams, 3000)
 
 	setTimeout(function() { Pimp.initdone = 1 }, 3000);
+	
+	document.onkeypress = function(e) { 
+		var k = chr(e.charCode);
+
+		if (k == '9') {
+			debug("Reconstituting....");
+			Effect.Fade(Pimp.currentpane, 1000, 
+				function() {
+					Pimp.showpane("streamlist_pane");
+					//var el = document.getElementById("streamlist_pane");
+					//if (el) Effect.Appear(el, 1000);
+				})
+		} else if (k == '8') {
+			var d = document.getElementById("debug");
+			d.style.display = (d.style.display == "none") ? "block" : "none";
+		}
+	};
+
+	var searchfield = document.getElementById("query");
+	var searchbutton = document.getElementById("search");
+
+	searchfield.addEventListener("keypress",
+		function(e) {
+			if (e.keyCode == 13) 
+				Pimp.dosearch();
+			return true;
+		}, true);
+
+	searchbutton.addEventListener(clickevent, Pimp.dosearch, false);
+
+	Pimp.currentpane = document.getElementById("streamlist_pane");
 }/*}}}*/
 
 /*
  * Helper Functions
  */
-Pimp.interval = function(func, timeout) {
+Pimp.interval = function(func, timeout) {/*{{{*/
 	//debug("Calling func in " + timeout + "ms");
 	setTimeout( function() { func(); Pimp.interval(func, timeout) }, timeout);
-}
+}/*}}}*/
 
 Pimp.prettysong = function(song) {/*{{{*/
 	var format = "[%ARTIST%] %ALBUM% - %TITLE%";
@@ -57,6 +90,11 @@ Pimp.loadstream = function(name) {/*{{{*/
 	callrpc("loadstream", {"stream":name}, Pimp.callback_loadstream);
 }/*}}}*/
 
+Pimp.nextsong = function() {/*{{{*/
+	debug("calling next song on: " + Pimp.mystream);
+	callrpc("next_song", {"stream":Pimp.mystream}, Pimp.callback_nextsong);
+}/*}}}*/
+
 /*
  * RPC Callbacks
  */
@@ -69,52 +107,16 @@ Pimp.callback_liststreams = function(params) {/*{{{*/
 Pimp.callback_loadstream = function(params) {/*{{{*/
 	/* Load the stream pane in the background? */
 	var streamdoc = Pimp.getStreamPane(params);
-	streamdoc.style.display="block";
-	setTimeout(function() { 
-				  Effect.Appear(streamdoc, 1000);
-				  }, 1);
-}
-
-Pimp.showStreamPane = function(params) {/*{{{*/
-	var streamdoc = Pimp.getStreamPane({'stream': Pimp.mystream});
 }/*}}}*/
 
-Pimp.getStreamPane = function(params) {/*{{{*/
-	var streamdoc = document.getElementById("streaminfo_pane");
-	
-	if (streamdoc)
-		return streamdoc;
+Pimp.callback_nextsong = function(params) {/*{{{*/
+	/* Update the stream info page with new song data */
+	Pimp.updateStreamInfo(params);
+}/*}}}*/
 
-	streamdoc = mkelement("div");
-	streamdoc.id = "streaminfo_pane";
-
-	var titlebar = mkelement("div");
-	var titlename = mkelement("div");
-	titlename.appendChild(mktext(params["name"] + " (/stream/blah)"));
-	var clientnum = mkelement("span");
-	clientnum.appendChild(mktext("[" + params["clients"] + " clients]"));
-	clientnum.style.fontSize = "small";
-	clientnum.style.float = "right";
-
-	titlebar.appendChild(titlename);
-	titlebar.appendChild(clientnum);
-
-	titlebar.style.borderLeft = "1em solid #8899DD";
-	titlebar.style.borderBottom = "3px solid #8899DD";
-	titlebar.style.paddingLeft = "3px";
-	titlebar.style.fontWeight = "bold";
-
-	streamdoc.appendChild(titlebar);
-	streamdoc.appendChild(mktext("this is a test... hurray"));
-
-	/* Hide it for now */
-	streamdoc.style.display="none";
-	streamdoc.style.opacity = 0;
-
-	document.getElementById("container").appendChild(streamdoc);
-
-	return streamdoc;
-}/*}}}*//*}}}*/
+Pimp.callback_search = function(params) {/*{{{*/
+	Pimp.showSearchResults(params);
+}/*}}}*/
 
 /*
  * Page Generation Functions
@@ -176,32 +178,15 @@ Pimp.updateStreamListElement = function(name, idx) {/*{{{*/
 		var newsongel = mkelement("div");
 		newsongel.id = basename + ":song";
 
-		/* HACK: Keep the new element from normally occupying any data */
-		//newsongel.style.position = "relative";
-		//newsongel.style.top = "-1em";
-		/* WHY DOES THIS WORK!? */
-		//newsongel.style.height = "0em"; 
-
 		newsongel.appendChild(mktext(currentsong));
 		newsongel.style.display="none";
-
-		//var myheight = songelement.parentNode.offsetHeight;
-		//songelement.parentNode.style.height = myheight + "px";
-		//songelement.parentNode.style.overflow = "hidden";
 
 		songelement.parentNode.appendChild(newsongel);
 
 		Effect.Fade(songelement, 1000, function () {
 						songelement.parentNode.removeChild(songelement);
-						//newsongel.style.top = "auto";
-						//newsongel.style.height = "auto";
-						//delete(songelement.parentNode.style["top"]);
-						//delete(songelement.parentNode.style["height"]);
 						Effect.Appear(newsongel, 1000);
 						});
-
-		//songelement.childNodes[0].nodeValue = currentsong;
-		//clientselement.childNodes[0].nodeValue = streaminfo["streaminfo"]["clients"];
 	} else {
 		var streamrow = mkelement("tr");
 		var streamname = mkelement("td");
@@ -246,6 +231,101 @@ Pimp.updateStreamListElement = function(name, idx) {/*{{{*/
 	}
 }/*}}}*/
 
+Pimp.showStreamPane = function(params) {/*{{{*/
+	var streamdoc = Pimp.getStreamPane({'stream': Pimp.mystream});
+}/*}}}*/
+
+Pimp.getStreamPane = function(params) {/*{{{*/
+	var streamdoc = document.getElementById("streaminfo_pane");
+	
+	if (!streamdoc) {
+		streamdoc = mkelement("div");
+		streamdoc.id = "streaminfo_pane";
+
+		var titlebar = mkelement("div");
+		var titlename = mkelement("div");
+		titlename.id = "streaminfo:title";
+		titlename.appendChild(mktext("PLACEHOLDER"));
+		var clientnum = mkelement("span");
+		clientnum.appendChild(mktext("[" + params["clients"] + " clients]"));
+		clientnum.style.fontSize = "small";
+		clientnum.style.float = "right";
+
+		titlebar.appendChild(titlename);
+		titlebar.appendChild(clientnum);
+
+		titlebar.style.borderLeft = "1em solid #8899DD";
+		titlebar.style.borderBottom = "3px solid #8899DD";
+		titlebar.style.paddingLeft = "3px";
+		titlebar.style.fontWeight = "bold";
+
+		streamdoc.appendChild(titlebar);
+		var playing = mkelement("div");
+		//playing.appendChild(mktext("Currently Playing: " + Pimp.prettysong(params["song"])));
+		playing.appendChild(mktext("PLACEHOLDER"));
+		playing.id = "streaminfo:currentsong";
+		streamdoc.appendChild(playing);
+
+		/* Generate the control buttons */
+		var button_next = mkelement("span");
+		button_next.appendChild(mktext("<<NEXT SONG>>"));
+		button_next.addEventListener("click", Pimp.nextsong, false);
+		button_next.style.fontWeight = "bold";
+		button_next.style.right = "50px;";
+		button_next.style.cursor = "pointer";
+		button_next.style.padding = "3px";
+		button_next.style.paddingLeft = "5px";
+		button_next.style.paddingRight = "5px";
+
+		streamdoc.appendChild(button_next);
+		document.getElementById("container").appendChild(streamdoc);
+	}
+
+	/* Hide it for now */
+	streamdoc.style.display="none";
+	streamdoc.style.opacity = 0;
+
+	var playing = document.getElementById("streaminfo:currentsong");
+	var title = document.getElementById("streaminfo:title");
+
+	playing.childNodes[0].nodeValue = "Currently Playing: " + Pimp.prettysong(params["song"]);
+	title.childNodes[0].nodeValue = params["name"] + " (" + params["path"] + ")";
+
+	return streamdoc;
+}/*}}}*/
+
+Pimp.updateStreamInfo = function(params) {/*{{{*/
+	var playing = document.getElementById("streaminfo:currentsong");
+	//Object.dpDump(params);
+	Effect.FadeText(playing, 1500, "Current Song: " + Pimp.prettysong(params["songdata"]));
+}/*}}}*/
+
+Pimp.showSearchResults = function(params) {/*{{{*/
+	var d = document.getElementById("search_pane");
+	var found = 1;
+
+	if (!d) {
+		d = mkelement("div");
+		d.id = "search_pane";
+		found = 0;
+	} else {
+		delete_children(d);
+	}
+	
+	d.style.border = "1px outset black";
+	d.style.backgroundColor = "#EFF4FF";
+
+	for (var i = 0; i < params.length; i++) {
+		var sr = mkelement("div");
+		sr.appendChild(mktext(Pimp.prettysong(params[i])));
+		sr.className = (i % 2) ? "even" : "odd";
+		d.appendChild(sr);
+	}
+
+	if (!found)
+		document.getElementById("container").appendChild(d);
+}/*}}}*/
+
 /*
  * Interfacey things
  */
@@ -257,7 +337,39 @@ Pimp.drilldown_stream = function() {/*{{{*/
 
 	var pane = document.getElementById("streamlist_pane");
 	Pimp.loadstream(Pimp.mystream);
-	Effect.Fade(pane, 1000);
-}
 
+	Effect.Fade(pane, 1000, function() { Pimp.showpane("streaminfo_pane", 1); } );
+}/*}}}*/
+
+Pimp.showpane = function(pane, loop) {/*{{{*/
+	var e = document.getElementById(pane);
+	if (!loop)
+		loop = 0
+
+	if (!e) {
+		if (loop) {
+			debug("Waiting for '"+pane+"' to manifest itself...");
+			setTimeout( function() { Pimp.showpane(pane, loop) }, 100);
+		}
+		return;
+	}
+
+	if (e.style.display == "none")
+		e.style.display="block";
+
+	Effect.Appear(e, 1000);
+	Pimp.currentpane = e;
+}/*}}}*/
+
+Pimp.dosearch = function() {/*{{{*/
+	var q = document.getElementById("query").value;
+
+	if (q.length == 0)
+		return;
+
+	Effect.Fade(Pimp.currentpane, 1000, function() { Pimp.showpane("search_pane", 1); } );
+	callrpc("search", {any: q}, Pimp.callback_search);
+}/*}}}*/
+
+/* Stuff to do once we're loaded! */
 window.addEventListener("load", Pimp.init, false);

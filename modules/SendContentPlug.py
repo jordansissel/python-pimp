@@ -20,6 +20,7 @@ class SendContentPlug(Plug):
 			and self.content_type[ext] or "text/plain"
 		r.send_response(200)
 		r.send_header("Content-type", ctype)
+		#r.send_header("Content-length", os.path.getsize(path));
 		r.end_headers()
 
 		if r.command == "GET":

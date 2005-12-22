@@ -7,7 +7,7 @@ Effect = {
 			obj.style.opacity = 1;
 
 		var endfunc = function() {
-			debug("FadeObj: " + obj);
+			//debug("FadeObj: " + obj);
 			obj.style.display = "none";
 			if (func)
 				func();
@@ -26,7 +26,7 @@ Effect = {
 			obj.style.display = "block";
 
 		var endfunc = function() {
-			debug("AppearObj: " + obj);
+			//debug("AppearObj: " + obj);
 			if (func)
 				func();
 		};
@@ -34,6 +34,24 @@ Effect = {
 		var a = new Accelimation(obj.style, "opacity", 1, time, 1, "");
 		a.onend = endfunc;
 		a.start();
-	}
+	},
+
+	'FadeText': function (obj, time, newtext, func) {
+		var text;
+
+		for (var i = 0; i < obj.childNodes.length; i++) {
+			var el = obj.childNodes[i];
+			if (el.nodeType == el.TEXT_NODE) {
+				text = el;
+				break;
+			}
+		}
+
+		Effect.Fade(obj, time / 2, function() {
+						text.nodeValue = newtext;
+						Effect.Appear(obj, time / 2, func);
+						});
+	},
+
 }
 

@@ -3,6 +3,7 @@ html,body {
 	padding: 0px;
 	font-family: Arial;
 	background-color: #FFFFF8;
+	overflow: hidden;
 }
 
 .titlebar {

@@ -1,15 +1,25 @@
 
 function dbg(txt) {
-	document.body.appendChild(mktext(txt + " | "));
+	var d = mkelement("div");
+	d.appendChild(mktext(txt));
+	document.body.appendChild(d);
 }
 
 function getOffset(el,prop) {
-	var o;
-	if (prop == "width") o = el.offsetWidth;
-	else if (prop == "height") o = el.offsetHeight;
-	else if (prop == "top") o = el.offsetTop;
-	else if (prop == "left") o = el.offsetLeft;
+	//var o = parseInt(el.style[prop]);
+	//if (o) return o;;
 
+	var o = 0;
+	var key;
+	if (prop == "width") key = "offsetWidth";
+	else if (prop == "height") key = "offsetHeight";
+	else if (prop == "top") key = "offsetTop";
+	else if (prop == "left") key = "offsetLeft";
+
+	while (el.offsetParent) {
+		o += parseInt(el[key]);
+		el = el.offsetParent;
+	}
 	return parseInt(o);
 }
 
@@ -83,8 +93,17 @@ Effect = {
 
 	'Zoom': function(obj, time, opts, func) {
 
-		if (!opts["width"] || !opts["height"])
+		if (!opts["width"] || !opts["height"]) {
+			dbg("Missing width or height arguments");
 			return;
+		}
+		if (opts["appear"]) {
+			obj.style.opacity = 0
+			Effect.Appear(obj, time*2);
+		} else if (opts["fade"]) {
+			//obj.style.opacity = 0
+			Effect.Fade(obj, time*2);
+		}
 
 		opts["to"] = opts["width"];
 		opts["prop"] = "width";
@@ -92,15 +111,16 @@ Effect = {
 
 		opts["to"] = opts["height"];
 		opts["prop"] = "height";
-		Effect.ZoomElement(obj, time, clone(opts), func);
+		Effect.ZoomElement(obj, time, clone(opts));
 
-		opts["to"] = parseInt(obj.style.left) - (opts["width"] / 2);
+		opts["to"] = getOffset(obj, "left") - ((opts["width"] - getOffset(obj, "width")) / 2);
 		opts["prop"] = "left";
-		Effect.ZoomElement(obj, time, clone(opts), func);
+		Effect.ZoomElement(obj, time, clone(opts));
 
-		opts["to"] = parseInt(obj.style.top) - (opts["height"] / 2);
+		opts["to"] = getOffset(obj, "top") - ((opts["height"] - getOffset(obj, "height")) / 2);
+		//opts["to"] = getOffset(obj, "top") - (opts["height"] / 2);
 		opts["prop"] = "top";
-		Effect.ZoomElement(obj, time, clone(opts), func);
+		Effect.ZoomElement(obj, time, clone(opts));
 
 	},
 
@@ -112,11 +132,7 @@ Effect = {
 			return;
 
 		var offset;
-		var cur = obj.style[opts["prop"]];
-		if (!cur)
-			cur = getOffset(obj, opts["prop"]);
-
-		cur = parseInt(cur);
+		var cur = getOffset(obj, opts["prop"]);
 
 		var delta = cur - opts["to"]
 		if (delta < 0)
@@ -124,19 +140,42 @@ Effect = {
 		else
 			offset = delta * opts["max"];
 
-		if (opts["appear"]) {
-			obj.style.opacity = 0
-			Effect.Appear(obj, time*2);
-		}
+		//dbg(opts["prop"] + ": " + cur + " -> " + opts["to"]);
 		var accel = new Accelimation(obj.style, opts["prop"], opts["to"] - offset, time, 1);
 		accel.onend = function() {
 			var x;
 			x = new Accelimation(obj.style, opts["prop"], opts["to"], time, 1);
-			x.onend = function() {};
+			x.onend = function() {
+				if (typeof(func) == "function")
+					func();
+			};
 			x.start();
 		}
 		accel.start();
-
 	},
+
+	'ZoomOut': function(obj, time, func) {
+		var copy = obj.cloneNode(1);
+
+		/* Scrample the id */
+		copy.id = "I live to die. No." +  Math.random();
+		//copy.style.overflow = "hidden";
+		copy.style.position = "absolute";
+		copy.style.display = "none";
+		copy.style.left = getOffset(obj, "left") + "px";
+		copy.style.top = getOffset(obj, "top") + "px";
+		copy.style.width = getOffset(obj, "width") + "px";
+		copy.style.height = getOffset(obj, "height") + "px";
+		copy.style.display = "block";
+		obj.parentNode.appendChild(copy);
+
+		var width = parseInt(copy.style.width) * 2
+		var height = parseInt(copy.style.height) * 2
+
+		Effect.Zoom(copy, time, {"width": width, "height": height, "fade": 1}, 
+						function() {
+							obj.parentNode.removeChild(copy);
+						});
+	}
 }
 

@@ -19,23 +19,6 @@ Pimp.init = function() {/*{{{*/
 	Pimp.interval(Pimp.liststreams, 3000)
 
 	setTimeout(function() { Pimp.initdone = 1 }, 3000);
-	
-	document.onkeypress = function(e) { 
-		var k = chr(e.charCode);
-
-		if (k == '9') {
-			debug("Reconstituting....");
-			Effect.Fade(Pimp.currentpane, 1000, 
-				function() {
-					Pimp.showpane("streamlist_pane");
-					//var el = document.getElementById("streamlist_pane");
-					//if (el) Effect.Appear(el, 1000);
-				})
-		} else if (k == '8') {
-			var d = document.getElementById("debug");
-			d.style.display = (d.style.display == "none") ? "block" : "none";
-		}
-	};
 
 	var searchfield = document.getElementById("query");
 	var searchbutton = document.getElementById("search");
@@ -50,6 +33,13 @@ Pimp.init = function() {/*{{{*/
 	searchbutton.addEventListener(clickevent, Pimp.dosearch, false);
 
 	Pimp.currentpane = document.getElementById("streamlist_pane");
+
+	var home = document.getElementById("button_home");
+	Pimp.addbutton(home, Pimp.click_home);
+
+	var debug = document.getElementById("button_debug");
+	Pimp.addbutton(debug, Pimp.toggledebug);
+
 }/*}}}*/
 
 /*
@@ -156,6 +146,10 @@ Pimp.updateStreamList = function(params) {/*{{{*/
 Pimp.updateStreamListEntry = function(name, data, idx) {/*{{{*/
 	Pimp.streams[name] = data
 	Pimp.updateStreamListElement(name, idx);
+
+	if (name == Pimp.mystream) {
+		Pimp.updateStreamInfo({"songdata": Pimp.streams[name]["song"]})
+	}
 }/*}}}*/
 
 Pimp.updateStreamListElement = function(name, idx) {/*{{{*/
@@ -297,7 +291,11 @@ Pimp.getStreamPane = function(params) {/*{{{*/
 Pimp.updateStreamInfo = function(params) {/*{{{*/
 	var playing = document.getElementById("streaminfo:currentsong");
 	//Object.dpDump(params);
-	Effect.FadeText(playing, 1500, "Current Song: " + Pimp.prettysong(params["songdata"]));
+	if (playing) {
+		var str = "Current Song: " + Pimp.prettysong(params["songdata"]);
+		if (playing.childNodes[0].nodeValue != str)
+			Effect.FadeText(playing, 1500, str);
+	}
 }/*}}}*/
 
 Pimp.showSearchResults = function(params) {/*{{{*/
@@ -349,18 +347,14 @@ Pimp.showpane = function(pane, loop) {/*{{{*/
 
 	if (!e) {
 		if (loop) {
-			debug("Waiting for '"+pane+"' to manifest itself...");
+			//Pimp.waiting();
 			setTimeout( function() { Pimp.showpane(pane, loop) }, 100);
 		}
 		return;
 	}
 
-	//if (e == Pimp.currentpane)
-		//return;
-
-	//if (e.style.display == "none")
-		//e.style.display="block";
-	Effect.Appear(e, 1000);
+	debug("Showing '"+pane+"'");
+	Effect.Appear(e, 1000, function() { debug("Done showing '"+pane+"'"); });
 	Pimp.currentpane = e;
 }/*}}}*/
 
@@ -373,6 +367,48 @@ Pimp.dosearch = function() {/*{{{*/
 	Effect.Fade(Pimp.currentpane, 1000, function() { Pimp.showpane("search_pane", 1); } );
 	callrpc("search", {any: q}, Pimp.callback_search);
 }/*}}}*/
+
+Pimp.click_home = function() {
+	Effect.Fade(Pimp.currentpane, 1000, 
+		function() {
+			Pimp.showpane("streamlist_pane");
+		});
+}
+
+Pimp.addbutton = function(obj, func) {
+
+	if (!Pimp.buttonoffset)
+		Pimp.buttonoffset = 25;
+
+	obj.style.cursor = "pointer";
+	obj.style.width = "0px";
+	obj.style.height = "0px";
+	obj.style.top = "25px";
+	obj.style.left = (parseInt(document.body.offsetWidth) - Pimp.buttonoffset) + "px";
+	debug("Left: " + obj.style.left);
+	obj.style.position = "absolute";
+	obj.style.display = "block";
+
+	if (typeof(func) == "function")
+		obj.addEventListener(clickevent, function() {
+									Effect.ZoomOut(this, 300);
+									func();
+									}, false);
+
+	setTimeout(function() {
+		Effect.Zoom(obj, 300, {'appear':1, "width": 50, "height": 50});
+	}, 200);
+
+	Pimp.buttonoffset += 50;
+}
+
+Pimp.toggledebug = function() {
+	var d = document.getElementById("debug");
+	if (d.style.display == "none")
+		Effect.Appear(d, 500);
+	else 
+		Effect.Fade(d, 500);
+}
 
 /* Stuff to do once we're loaded! */
 window.addEventListener("load", Pimp.init, false);

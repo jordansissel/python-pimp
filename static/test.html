@@ -13,10 +13,7 @@
 		function blah(e) {
 			for (var x = 1; x < 10; x++) {
 				if (e.shiftKey) {
-					var el = document.getElementById("test" + x);
-					if (el) {
-						Effect.ZoomOut(el, 300);
-					}
+					fizz("test" + x, x);
 				} else {
 					foo("test" + x, x);
 				}
@@ -29,31 +26,37 @@
 
 			a.style.width = 0;
 			a.style.height = 0;
+			a.style.top = "50px";
+			a.style.left = (100 * i) + "px";
+			a.style.position= "absolute";
 
 			setTimeout(function() {
 						  var b = document.getElementById(bar);
 						  Effect.Zoom(b, 300, { 'appear': 1,"width": 50, "height": 50 });
-						  }, 100 * i);
+						  }, 200 * i);
+		}
+
+		function fizz(bar, i) {
+			var a = document.getElementById(bar);
+			if (!a) return;
+
+			setTimeout(function() {
+						  var b = document.getElementById(bar);
+						  Effect.ZoomOut(b, 300);
+						  }, 200 * i);
 		}
 ]]>
 	</script>
 </head>
 <body onload="window.addEventListener('click', blah, true)">
 
-<div> Click on the page to activate demo </div>
+<div> 
+Single (left) click on the page to the Zoom demo. Shift+click to activate the 'zoom out' demo
+</div>
+
 
 <div>
-<!--
-<img src="http://www.csh.rit.edu/~psionic/images/lj/kenya.png" id="test1" />
-<img src="http://www.csh.rit.edu/~psionic/images/lj/dewie.png" id="test2" />
-<img src="http://www.csh.rit.edu/~psionic/images/lj/zerowing.png" id="test3" />
-<img src="http://www.csh.rit.edu/~psionic/images/sloth1.jpg" id="test4" />
-<img src="http://www.csh.rit.edu/~psionic/images/lj/kenya.png" id="test5" />
-<img src="http://www.csh.rit.edu/~psionic/images/lj/dewie.png" id="test6" />
-<img src="http://www.csh.rit.edu/~psionic/images/lj/zerowing.png" id="test7" />
-<img src="http://www.csh.rit.edu/~psionic/images/sloth1.jpg" id="test8" />
--->
-<img src="/static/images/pimp-home.png" id="test1" />
+<img src="/static/images/pimp-home.png" id="test1" alt="foo"/>
 <img src="/static/images/debug.png" id="test2" />
 <img src="/static/images/pimp-home.png" id="test3" />
 </div>

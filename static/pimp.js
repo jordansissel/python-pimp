@@ -38,7 +38,7 @@ Pimp.init = function() {/*{{{*/
 	Pimp.addbutton(home, Pimp.click_home);
 
 	var debug = document.getElementById("button_debug");
-	Pimp.addbutton(debug, Pimp.toggledebug);
+	Pimp.addbutton(debug, Pimp.toggledebug, 1);
 
 }/*}}}*/
 
@@ -392,7 +392,7 @@ Pimp.addbutton = function(obj, func) {
 	if (typeof(func) == "function")
 		obj.addEventListener(clickevent, function() {
 									Effect.ZoomOut(this, 300);
-									func();
+									if (typeof(func) == "function") func();
 									}, false);
 
 	setTimeout(function() {
@@ -404,10 +404,18 @@ Pimp.addbutton = function(obj, func) {
 
 Pimp.toggledebug = function() {
 	var d = document.getElementById("debug");
-	if (d.style.display == "none")
-		Effect.Appear(d, 500);
-	else 
-		Effect.Fade(d, 500);
+	if (d.style.display == "none") {
+		//Effect.Appear(d, 500);
+		d.style.display = "block";
+		var a = new Accelimation(d.style, "height", 8, 500, 1, "em");
+		//a.onend = function() { d.style.display = "block"; }
+		a.start();
+	} else {
+		//Effect.Fade(d, 500);
+		var a = new Accelimation(d.style, "height", 0, 500, 1, "em");
+		a.onend = function() { d.style.display = "none"; }
+		a.start();
+	}
 }
 
 /* Stuff to do once we're loaded! */

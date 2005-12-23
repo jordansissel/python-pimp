@@ -175,6 +175,7 @@ Effect = {
 		Effect.Zoom(copy, time, {"width": width, "height": height, "fade": 1}, 
 						function() {
 							obj.parentNode.removeChild(copy);
+							if (typeof(func) == "function") func();
 						});
 	}
 }

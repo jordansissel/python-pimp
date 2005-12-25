@@ -39,11 +39,6 @@ Pimp.init = function() {/*{{{*/
 
 	searchbutton.addEventListener(clickevent, Pimp.dosearch, false);
 
-
-	/* XXX: HACK */
-	Pimp.buttonoffset = {};
-	Pimp.buttonoffset[document.body] = 25;
-
 	var home = document.getElementById("button_home");
 	Pimp.addbutton(home, Pimp.click_home);
 
@@ -159,7 +154,7 @@ Pimp.callback_search = function(params) {/*{{{*/
 
 Pimp.callback_enqueue = function(params) {/*{{{*/
 	var but = document.getElementById("enqueuebutton");
-	Effect.Fade(but, 500, function() { but.parentNode.removeChild(but) });
+	Pimp.removebutton(but);
 }/*}}}*/
 
 /*
@@ -483,8 +478,8 @@ Pimp.addbutton = function(obj, func, parent) {/*{{{*/
 	obj.style.cursor = "pointer";
 	obj.style.width = "0px";
 	obj.style.height = "0px";
-	obj.style.top = (getOffset(parent, "top") + 25) + "px";
-	obj.style.left = (getOffset(parent, "width") - Pimp.buttonoffset[parent]) + "px";
+	obj.style.top = (getOffset(parent, "top") + (obj.naturalHeight/2)) + "px";
+	obj.style.left = (getOffset(parent, "width") - Pimp.buttonoffset[parent] - (obj.naturalWidth / 2)) + "px";
 	obj.style.position = "absolute";
 	obj.style.display = "block";
 
@@ -510,6 +505,15 @@ Pimp.addbutton = function(obj, func, parent) {/*{{{*/
 		Pimp.buttons[parent] = {};
 
 }/*}}}*/
+
+Pimp.removebutton = function(obj) {
+	Effect.Fade(obj, 500, function() { 
+					var parent = obj.parentNode;
+					debug("p: " + parent.tagName);
+					Pimp.buttonoffset[parent] -= obj.naturalWidth;
+					parent.removeChild(obj);
+					});
+}
 
 Pimp.toggledebug = function() {/*{{{*/
 	var d = document.getElementById("debug");

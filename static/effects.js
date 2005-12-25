@@ -16,9 +16,13 @@ function getOffset(el,prop) {
 	else if (prop == "top") key = "offsetTop";
 	else if (prop == "left") key = "offsetLeft";
 
-	while (el.offsetParent) {
+	if (el.offsetParent) {
+		while (el.offsetParent) {
+			o += parseInt(el[key]);
+			el = el.offsetParent;
+		}
+	} else {
 		o += parseInt(el[key]);
-		el = el.offsetParent;
 	}
 	return parseInt(o);
 }
@@ -177,6 +181,7 @@ Effect = {
 							obj.parentNode.removeChild(copy);
 							if (typeof(func) == "function") func();
 						});
-	}
+	},
+
 }
 

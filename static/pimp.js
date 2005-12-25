@@ -1,5 +1,11 @@
 var interface_type = "workstation";
 
+/*XXX: SHOW PROPERTIES
+for (var i in results) {
+	debug("td: " + i + ": " + results[i]);
+}
+*/
+
 // For future touchscreen portability
 if (interface_type == "workstation") {
 	clickevent = "click";
@@ -14,6 +20,7 @@ function chr(val) { return unescape("%" + val.toString(16)); }
 
 Pimp.init = function() {/*{{{*/
 	Pimp.streams = {};
+	Pimp.currentpane = document.getElementById("streamlist_pane");
 
 	Pimp.liststreams();
 	Pimp.interval(Pimp.liststreams, 3000)
@@ -32,13 +39,16 @@ Pimp.init = function() {/*{{{*/
 
 	searchbutton.addEventListener(clickevent, Pimp.dosearch, false);
 
-	Pimp.currentpane = document.getElementById("streamlist_pane");
+
+	/* XXX: HACK */
+	Pimp.buttonoffset = {};
+	Pimp.buttonoffset[document.body] = 25;
 
 	var home = document.getElementById("button_home");
 	Pimp.addbutton(home, Pimp.click_home);
 
-	var debug = document.getElementById("button_debug");
-	Pimp.addbutton(debug, Pimp.toggledebug, 1);
+	var debugbut = document.getElementById("button_debug");
+	Pimp.addbutton(debugbut, Pimp.toggledebug);
 
 }/*}}}*/
 
@@ -48,6 +58,14 @@ Pimp.init = function() {/*{{{*/
 Pimp.interval = function(func, timeout) {/*{{{*/
 	//debug("Calling func in " + timeout + "ms");
 	setTimeout( function() { func(); Pimp.interval(func, timeout) }, timeout);
+}/*}}}*/
+
+Pimp.waitfor = function(obj, prop, value, func) {/*{{{*/
+	if (obj[prop] == value) {
+		func();
+	} else {
+		setTimeout(function() { Pimp.waitfor(obj, prop, value, func) }, 100);
+	}
 }/*}}}*/
 
 Pimp.prettysong = function(song) {/*{{{*/
@@ -73,18 +91,49 @@ Pimp.prettysong = function(song) {/*{{{*/
  * RPC Functions
  */
 Pimp.liststreams = function() {/*{{{*/
-	callrpc("list_streams", {}, Pimp.callback_liststreams);
+	/* Only list streams if 'streamlist_pane' is in view */
+	if (Pimp.currentpane.id == "streamlist_pane")
+		callrpc("list_streams", {}, Pimp.callback_liststreams);
+	else if (Pimp.currentpane.id == "streaminfo_pane")
+		Pimp.loadstream(Pimp.mystream);
+
 }/*}}}*/
 
 Pimp.loadstream = function(name) {/*{{{*/
 	callrpc("loadstream", {"stream":name}, Pimp.callback_loadstream);
 }/*}}}*/
 
-Pimp.nextsong = function() {/*{{{*/
-	debug("calling next song on: " + Pimp.mystream);
+Pimp.click_nextsong = function(e) {/*{{{*/
+	//debug("calling next song on: " + Pimp.mystream + " / ::: " + this);
 	callrpc("next_song", {"stream":Pimp.mystream}, Pimp.callback_nextsong);
+	Effect.ZoomOut(e.target, 300);
 }/*}}}*/
 
+Pimp.click_prevsong = function(e) {/*{{{*/
+	//debug("calling prev song on: " + Pimp.mystream);
+	//callrpc("next_song", {"stream":Pimp.mystream}, Pimp.callback_nextsong);
+	Effect.ZoomOut(e.target, 300);
+}/*}}}*/
+
+Pimp.click_home = function() {/*{{{*/
+	Pimp.showpane("streamlist_pane");
+}/*}}}*/
+
+Pimp.click_enqueue = function() {/*{{{*/
+	debug("enqueue");
+
+	var enq = document.getElementById("queuepage");
+	var list = [];
+
+	for (var i = 0; i < enq.childNodes.length; i++) {
+		list.push(enq.childNodes[i].songid);
+	}
+
+	if (Pimp.mystream)
+		callrpc("enqueue", {stream: Pimp.mystream, list: list}, Pimp.callback_enqueue);
+	else
+		debug("I don't have a stream to enqueue this too");
+}/*}}}*/
 /*
  * RPC Callbacks
  */
@@ -106,6 +155,11 @@ Pimp.callback_nextsong = function(params) {/*{{{*/
 
 Pimp.callback_search = function(params) {/*{{{*/
 	Pimp.showSearchResults(params);
+}/*}}}*/
+
+Pimp.callback_enqueue = function(params) {/*{{{*/
+	var but = document.getElementById("enqueuebutton");
+	Effect.Fade(but, 500, function() { but.parentNode.removeChild(but) });
 }/*}}}*/
 
 /*
@@ -243,7 +297,6 @@ Pimp.getStreamPane = function(params) {/*{{{*/
 		var clientnum = mkelement("span");
 		clientnum.appendChild(mktext("[" + params["clients"] + " clients]"));
 		clientnum.style.fontSize = "small";
-		clientnum.style.float = "right";
 
 		titlebar.appendChild(titlename);
 		titlebar.appendChild(clientnum);
@@ -255,35 +308,41 @@ Pimp.getStreamPane = function(params) {/*{{{*/
 
 		streamdoc.appendChild(titlebar);
 		var playing = mkelement("div");
-		//playing.appendChild(mktext("Currently Playing: " + Pimp.prettysong(params["song"])));
 		playing.appendChild(mktext("PLACEHOLDER"));
 		playing.id = "streaminfo:currentsong";
 		streamdoc.appendChild(playing);
 
 		/* Generate the control buttons */
-		var button_next = mkelement("span");
-		button_next.appendChild(mktext("<<NEXT SONG>>"));
-		button_next.addEventListener("click", Pimp.nextsong, false);
-		button_next.style.fontWeight = "bold";
-		button_next.style.right = "50px;";
-		button_next.style.cursor = "pointer";
-		button_next.style.padding = "3px";
-		button_next.style.paddingLeft = "5px";
-		button_next.style.paddingRight = "5px";
+		var button_next = mkelement("img");
+		button_next.src="/static/images/pimp-next.png";
+		button_next.id = "button_next";
 
-		streamdoc.appendChild(button_next);
+		var button_prev = mkelement("img");
+		button_prev.src="/static/images/pimp-prev.png";
+		button_prev.id = "button_prev";
+
 		document.getElementById("container").appendChild(streamdoc);
-	}
 
-	/* Hide it for now */
-	streamdoc.style.display="none";
-	streamdoc.style.opacity = 0;
+		/* Hide it for now */
+		streamdoc.style.display="none";
+
+		Pimp.waitfor(streamdoc.style, "display", "block", function() {
+			Pimp.addbutton(button_next, Pimp.click_nextsong, titlebar);
+			Pimp.addbutton(button_prev, Pimp.click_prevsong, titlebar);
+		})
+
+	}
 
 	var playing = document.getElementById("streaminfo:currentsong");
 	var title = document.getElementById("streaminfo:title");
 
-	playing.childNodes[0].nodeValue = "Currently Playing: " + Pimp.prettysong(params["song"]);
-	title.childNodes[0].nodeValue = params["name"] + " (" + params["path"] + ")";
+	/* Playid will change when the song actually changes */
+	if (Pimp.currentsongid != params["song"]["playid"]) {
+		playing.childNodes[0].nodeValue = "Current Song: " + Pimp.prettysong(params["song"]);
+		title.childNodes[0].nodeValue = params["name"] + " (" + params["path"] + ")";
+	}
+
+	Pimp.currentsongid = params["song"]["playid"];
 
 	return streamdoc;
 }/*}}}*/
@@ -309,20 +368,60 @@ Pimp.showSearchResults = function(params) {/*{{{*/
 	} else {
 		delete_children(d);
 	}
-	
-	d.style.border = "1px outset black";
+
+	d.style.border = "1px solid black";
 	d.style.backgroundColor = "#EFF4FF";
-	d.style.opacity = 0;
+
+	var table = mkelement("table");
+	var tr = mkelement("tr");
+	var resultstd = mkelement("td");
+	var newqueuetd = mkelement("td");
+
+	var results = mkelement("div");
+	var newqueue = mkelement("div");
 
 	for (var i = 0; i < params.length; i++) {
-		var sr = mkelement("div");
-		sr.appendChild(mktext(Pimp.prettysong(params[i])));
-		sr.className = (i % 2) ? "even" : "odd";
-		d.appendChild(sr);
+		var result = mkelement("div");
+		result.className = "searchresult";
+		result.appendChild(mktext(Pimp.prettysong(params[i])));
+		result.songid = params[i]["songid"];
+		result.style.backgroundColor = (i % 2)  ? "#D8D8DF" : "#E8E8EF";
+		result.addEventListener(clickevent, function() { newqueue.appendChild(this) }, false);
+		results.appendChild(result);
 	}
+
+	results.style.width = (getOffset(document.body, "width") / 2) + "px";
+	newqueue.style.width = (getOffset(document.body, "width") / 2) + "px";
+	results.id = "resultspage";
+	newqueue.id = "queuepage";
+
+	var h = (getOffset(document.body, "height") - getOffset(results, "top") - 150) + "px";
+	results.style.border = "1px solid black";
+	newqueue.style.border = "1px solid black";
+
+	results.style.height =  newqueue.style.height = h;
+	results.style.overflow = newqueue.style.overflow = "auto";
+
+	d.style.height = h;
+	d.style.overflow = "scroll";
+
+	results.vAlign="top";
+	newqueue.vAlign="top";
+	resultstd.appendChild(results);
+	newqueuetd.appendChild(newqueue);
+	tr.appendChild(resultstd);
+	tr.appendChild(newqueuetd);
+	table.appendChild(tr);
+	d.appendChild(table);
 
 	if (!found)
 		document.getElementById("container").appendChild(d);
+
+	var enq = mkelement("img");
+	enq.src="/static/images/pimp-enqueue.png";
+	enq.id="enqueuebutton";
+	Pimp.addbutton(enq, Pimp.click_enqueue);
+
 }/*}}}*/
 
 /*
@@ -333,17 +432,15 @@ Pimp.drilldown_stream = function() {/*{{{*/
 	Pimp.mystream = this.id.substr(7);
 
 	debug("Drilling into " + Pimp.mystream);
-
-	var pane = document.getElementById("streamlist_pane");
 	Pimp.loadstream(Pimp.mystream);
-
-	Effect.Fade(pane, 1000, function() { Pimp.showpane("streaminfo_pane", 1); } );
+	Pimp.showpane("streaminfo_pane", 1);
 }/*}}}*/
 
 Pimp.showpane = function(pane, loop) {/*{{{*/
 	var e = document.getElementById(pane);
 	if (!loop)
 		loop = 0
+
 
 	if (!e) {
 		if (loop) {
@@ -353,8 +450,10 @@ Pimp.showpane = function(pane, loop) {/*{{{*/
 		return;
 	}
 
-	debug("Showing '"+pane+"'");
-	Effect.Appear(e, 1000, function() { debug("Done showing '"+pane+"'"); });
+	Pimp.currentpane.style.display = "none";
+	debug("Showing '"+pane+"' / Hiding: '"+Pimp.currentpane.id+"'");
+	//Effect.Appear(e, 1000, function() { debug("Done showing '"+pane+"'"); });
+	e.style.display = "block";
 	Pimp.currentpane = e;
 }/*}}}*/
 
@@ -364,51 +463,61 @@ Pimp.dosearch = function() {/*{{{*/
 	if (q.length == 0)
 		return;
 
-	Effect.Fade(Pimp.currentpane, 1000, function() { Pimp.showpane("search_pane", 1); } );
+	//Effect.Fade(Pimp.currentpane, 1000, function() { Pimp.showpane("search_pane", 1); } );
+
+	Pimp.showpane("search_pane",1);
 	callrpc("search", {any: q}, Pimp.callback_search);
 }/*}}}*/
 
-Pimp.click_home = function() {
-	Effect.Fade(Pimp.currentpane, 1000, 
-		function() {
-			Pimp.showpane("streamlist_pane");
-		});
-}
-
-Pimp.addbutton = function(obj, func) {
+Pimp.addbutton = function(obj, func, parent) {/*{{{*/
 
 	if (!Pimp.buttonoffset)
-		Pimp.buttonoffset = 25;
+		Pimp.buttonoffset = {};
+
+	if (!parent)
+		parent = document.body;
+
+	if (!Pimp.buttonoffset[parent])
+		Pimp.buttonoffset[parent] = 0;
 
 	obj.style.cursor = "pointer";
 	obj.style.width = "0px";
 	obj.style.height = "0px";
-	obj.style.top = "25px";
-	obj.style.left = (parseInt(document.body.offsetWidth) - Pimp.buttonoffset) + "px";
-	debug("Left: " + obj.style.left);
+	obj.style.top = (getOffset(parent, "top") + 25) + "px";
+	obj.style.left = (getOffset(parent, "width") - Pimp.buttonoffset[parent]) + "px";
 	obj.style.position = "absolute";
 	obj.style.display = "block";
 
 	if (typeof(func) == "function")
-		obj.addEventListener(clickevent, function() {
+		obj.addEventListener(clickevent, function(e) {
 									Effect.ZoomOut(this, 300);
-									if (typeof(func) == "function") func();
+									func(e);
 									}, false);
+	else
+		debug("click func for " + obj.id + " not a function");
 
 	setTimeout(function() {
-		Effect.Zoom(obj, 300, {'appear':1, "width": 50, "height": 50});
-	}, 200);
+		Effect.Zoom(obj, 300, {'appear':1, "width": obj.naturalWidth, "height": obj.naturalHeight});
+	}, 20);
 
-	Pimp.buttonoffset += 50;
-}
+	parent.appendChild(obj);
+	Pimp.buttonoffset[parent] += obj.naturalWidth;
 
-Pimp.toggledebug = function() {
+	if (!Pimp.buttons)
+		Pimp.buttons = {};
+
+	if (!Pimp.buttons[parent])
+		Pimp.buttons[parent] = {};
+
+}/*}}}*/
+
+Pimp.toggledebug = function() {/*{{{*/
 	var d = document.getElementById("debug");
 	if (d.style.display == "none") {
 		//Effect.Appear(d, 500);
 		d.style.display = "block";
 		var a = new Accelimation(d.style, "height", 8, 500, 1, "em");
-		//a.onend = function() { d.style.display = "block"; }
+		a.onend = function() { }
 		a.start();
 	} else {
 		//Effect.Fade(d, 500);
@@ -416,7 +525,7 @@ Pimp.toggledebug = function() {
 		a.onend = function() { d.style.display = "none"; }
 		a.start();
 	}
-}
+}/*}}}*/
 
 /* Stuff to do once we're loaded! */
 window.addEventListener("load", Pimp.init, false);

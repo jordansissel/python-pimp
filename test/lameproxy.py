@@ -13,6 +13,7 @@ class LAMEProxy:
 
 	class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		def do_GET(self):
+			DIE=0
 			self.send_response(200)
 			self.send_header("Content-type", "audio/mpeg");
 			self.end_headers();
@@ -21,6 +22,8 @@ class LAMEProxy:
 			u = urllib.urlopen("http://kenya.csh.rit.edu:8000%s" % self.path)
 			buf = u.read(4096)
 			while len(buf) > 0:
+				if DIE:
+					break
 				#print "pimp: %d bytes" % len(buf)
 				lamein.write(buf);
 				while 1:
@@ -28,10 +31,19 @@ class LAMEProxy:
 					if len(data[0]) == 0:
 						break
 					mp3 = lameout.read(4096)
-					self.wfile.write(mp3)
-					#print "lame: %d bytes" % len(mp3)
+					try:
+						self.wfile.write(mp3)
+					except:
+						DIE=1
+						try:
+							lameout.close()
+						except:
+							print "Error closing lameout"
+						try:
+							lamein.close()
+						except:
+							print "Error closing lamein"
 				buf = u.read(4096)
-
 
 if __name__ == "__main__":
 	f = LAMEProxy()

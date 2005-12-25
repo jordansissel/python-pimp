@@ -17,7 +17,6 @@ class MusicDB(Thread):
 		sqlite.register_adapter(str, adapt_string)
 		sqlite.register_converter('VARCHAR', decode_string)
 
-
 		if not os.path.isfile(self.dbpath):
 			print "Need to create db"
 			self.needinit = 1

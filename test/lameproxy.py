@@ -7,7 +7,7 @@ import os
 import select
 
 class LAMEProxy:
-	def __init__(self, port=9002):
+	def __init__(self, port=9000):
 		self.port = port
 		self.server = SocketServer.ThreadingTCPServer(('', self.port), self.RequestHandler)
 

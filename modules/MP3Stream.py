@@ -28,7 +28,8 @@ class MP3Stream:
 	def nextsong(self):
 		song = {}
 		if len(self.queue) > 0:
-			self.song = self.queue.pop()
+			self.song = self.queue[0]
+			self.queue = self.queue[1:]
 		else:
 			MusicDB.instance.request(method="get_random_song", result=song)
 			self.song = song["song"]

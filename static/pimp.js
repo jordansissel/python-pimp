@@ -6,7 +6,7 @@ for (var i in results) {
 }
 */
 
-// For future touchscreen portability
+// For future touchscreen portability?
 if (interface_type == "workstation") {
 	clickevent = "click";
 } else {
@@ -22,6 +22,7 @@ Pimp.init = function() {/*{{{*/
 	Pimp.streams = {};
 	Pimp.currentpane = document.getElementById("streamlist_pane");
 
+	Pimp.wait = {};
 	Pimp.liststreams();
 	Pimp.interval(Pimp.liststreams, 3000)
 
@@ -135,12 +136,23 @@ Pimp.click_enqueue = function() {/*{{{*/
 
 Pimp.callback_liststreams = function(params) {/*{{{*/
 	Pimp.updateStreamList(params);
-	//Object.dpDump(params);
 }/*}}}*/
 
 Pimp.callback_loadstream = function(params) {/*{{{*/
 	/* Load the stream pane in the background? */
-	var streamdoc = Pimp.getStreamPane(params);
+	Pimp.getStreamPane(params);
+
+	//debug("loadstream: " + params.path);
+	if (!Pimp.streams[params.path])
+		Pimp.streams[params.path] = new Stream(params.path);
+
+	Pimp.streams[params.path].updatesong(params.song);
+	Pimp.streams[params.path].updatequeue(params.queue);
+
+	var playing = document.getElementById("streaminfo:currentsong");
+	var recent = document.getElementById("streaminfo:recent");
+
+	Pimp.updateStreamInfo(params);
 }/*}}}*/
 
 Pimp.callback_nextsong = function(params) {/*{{{*/
@@ -193,22 +205,22 @@ Pimp.updateStreamList = function(params) {/*{{{*/
 }/*}}}*/
 
 Pimp.updateStreamListEntry = function(name, data, idx) {/*{{{*/
-	Pimp.streams[name] = data
-	Pimp.updateStreamListElement(name, idx);
+	if (!Pimp.streams[name])
+		Pimp.streams[name] = new Stream(name);
 
-	if (name == Pimp.mystream) {
-		Pimp.updateStreamInfo({"songdata": Pimp.streams[name]["song"]})
-	}
+	Pimp.streams[name].updatesong(data.song);
+	Pimp.streams[name].updateinfo(data.streaminfo);
+	Pimp.updateStreamListElement(name, idx);
 }/*}}}*/
 
 Pimp.updateStreamListElement = function(name, idx) {/*{{{*/
-	var streaminfo = Pimp.streams[name];
+	var stream = Pimp.streams[name];
 
 	var list = document.getElementById("streamlist");
 	var table = document.getElementById("streamlist_table");
 	var streamentry = document.getElementById("stream:" + name);
 
-	var currentsong  = Pimp.prettysong(streaminfo["song"]);
+	var currentsong = Pimp.prettysong(stream.currentsong);
 	var basename = "stream:" + name;
 	if (streamentry) {
 		//XXX; Put this in an Interface class/objecty thing?
@@ -248,7 +260,7 @@ Pimp.updateStreamListElement = function(name, idx) {/*{{{*/
 
 		var namediv = tmpfunc("div", name.substr(8));
 		var songdiv = tmpfunc("div", currentsong);
-		var clientdiv = tmpfunc("div", streaminfo["streaminfo"]["clients"]);
+		var clientdiv = tmpfunc("div", stream.numclients);
 
 		streamname.appendChild(namediv);
 		streamsong.appendChild(songdiv);
@@ -275,7 +287,7 @@ Pimp.updateStreamListElement = function(name, idx) {/*{{{*/
 }/*}}}*/
 
 Pimp.showStreamPane = function(params) {/*{{{*/
-	var streamdoc = Pimp.getStreamPane({'stream': Pimp.mystream});
+	Pimp.getStreamPane({'stream': Pimp.mystream});
 }/*}}}*/
 
 Pimp.getStreamPane = function(params) {/*{{{*/
@@ -303,9 +315,18 @@ Pimp.getStreamPane = function(params) {/*{{{*/
 
 		streamdoc.appendChild(titlebar);
 		var playing = mkelement("div");
-		playing.appendChild(mktext("PLACEHOLDER"));
 		playing.id = "streaminfo:currentsong";
+		playing.className = "streaminfo-currentsong";
+
+		var recent = mkelement("div");
+		recent.id = "streaminfo:recent";
+
+		var queue = mkelement("div");
+		queue.id = "streaminfo:queue";
+
+		streamdoc.appendChild(recent);
 		streamdoc.appendChild(playing);
+		streamdoc.appendChild(queue);
 
 		/* Generate the control buttons */
 		var button_next = mkelement("img");
@@ -325,30 +346,56 @@ Pimp.getStreamPane = function(params) {/*{{{*/
 			Pimp.addbutton(button_next, Pimp.click_nextsong, titlebar);
 			Pimp.addbutton(button_prev, Pimp.click_prevsong, titlebar);
 		})
-
 	}
 
-	var playing = document.getElementById("streaminfo:currentsong");
-	var title = document.getElementById("streaminfo:title");
-
-	/* Playid will change when the song actually changes */
-	if (Pimp.currentsongid != params["song"]["playid"]) {
-		playing.childNodes[0].nodeValue = "Current Song: " + Pimp.prettysong(params["song"]);
-		title.childNodes[0].nodeValue = params["name"] + " (" + params["path"] + ")";
-	}
-
-	Pimp.currentsongid = params["song"]["playid"];
+	Pimp.updateStreamInfo(params);
 
 	return streamdoc;
 }/*}}}*/
 
 Pimp.updateStreamInfo = function(params) {/*{{{*/
 	var playing = document.getElementById("streaminfo:currentsong");
-	//Object.dpDump(params);
+	var recent = document.getElementById("streaminfo:recent");
+	var queue = document.getElementById("streaminfo:queue");
+	var stream = Pimp.streams[params["path"]];
+
 	if (playing) {
-		var str = "Current Song: " + Pimp.prettysong(params["songdata"]);
-		if (playing.childNodes[0].nodeValue != str)
-			Effect.FadeText(playing, 1500, str);
+		//debug("Foo: " + params.song);
+		var str = Pimp.prettysong(params["song"]);
+		if (Pimp.currentsongid != params["song"]["playid"]) {
+			debug("Updating stream info");
+			var sdiv = mkelement("div");
+			sdiv.appendChild(mktext(Pimp.prettysong(params["song"])))
+			sdiv.style.display="none";
+			sdiv.style.opacity=0;
+
+			for (var i = 0; i < playing.childNodes.length; i++) {
+				recent.appendChild(playing.childNodes[i]);
+			}
+
+			while (recent.childNodes.length > stream.maxrecent) {
+				recent.removeChild(recent.childNodes[0]);
+			}
+
+			/* Update the queue */
+			//if (params.queue)
+				//Object.dpDump(params.queue);
+			delete_children(queue);
+			for (var i = 0; i < params.queue.length; i++) {
+				var qel = mkelement("div");
+				qel.appendChild(mktext(Pimp.prettysong(params.queue[i])));
+				queue.appendChild(qel);
+			}
+
+			playing.appendChild(sdiv);
+			Effect.Appear(sdiv, 1500);
+		}
+
+		var title = document.getElementById("streaminfo:title");
+		if (params["path"] && title) {
+			title.childNodes[0].nodeValue = params["name"] + " (" + params["path"] + ")";
+		}
+		Pimp.currentsongid = params["song"]["playid"];
 	}
 }/*}}}*/
 
@@ -385,8 +432,8 @@ Pimp.showSearchResults = function(params) {/*{{{*/
 		results.appendChild(result);
 	}
 
-	results.style.width = (getOffset(document.body, "width") / 2) + "px";
-	newqueue.style.width = (getOffset(document.body, "width") / 2) + "px";
+	resultstd.width = "50%";
+	newqueuetd.width = "50%";
 	results.id = "resultspage";
 	newqueue.id = "queuepage";
 
@@ -394,11 +441,8 @@ Pimp.showSearchResults = function(params) {/*{{{*/
 	results.style.border = "1px solid black";
 	newqueue.style.border = "1px solid black";
 
-	results.style.height =  newqueue.style.height = h;
+	results.style.height = newqueue.style.height = h;
 	results.style.overflow = newqueue.style.overflow = "auto";
-
-	d.style.height = h;
-	d.style.overflow = "scroll";
 
 	results.vAlign="top";
 	newqueue.vAlign="top";
@@ -446,7 +490,7 @@ Pimp.showpane = function(pane, loop) {/*{{{*/
 	}
 
 	Pimp.currentpane.style.display = "none";
-	debug("Showing '"+pane+"' / Hiding: '"+Pimp.currentpane.id+"'");
+	//debug("Showing '"+pane+"' / Hiding: '"+Pimp.currentpane.id+"'");
 	//Effect.Appear(e, 1000, function() { debug("Done showing '"+pane+"'"); });
 	e.style.display = "block";
 	Pimp.currentpane = e;
@@ -483,6 +527,10 @@ Pimp.addbutton = function(obj, func, parent) {/*{{{*/
 	obj.style.position = "absolute";
 	obj.style.display = "block";
 
+
+	/* Wait for the image to load? */
+	while (!obj.naturalHeight);
+
 	if (typeof(func) == "function")
 		obj.addEventListener(clickevent, function(e) {
 									Effect.ZoomOut(this, 300);
@@ -506,14 +554,15 @@ Pimp.addbutton = function(obj, func, parent) {/*{{{*/
 
 }/*}}}*/
 
-Pimp.removebutton = function(obj) {
+Pimp.removebutton = function(obj) {/*{{{*/
 	Effect.Fade(obj, 500, function() { 
 					var parent = obj.parentNode;
-					debug("p: " + parent.tagName);
+					//debug("p: " + parent.tagName);
 					Pimp.buttonoffset[parent] -= obj.naturalWidth;
+					debug("newoffset: " + Pimp.buttonoffset[parent]);
 					parent.removeChild(obj);
 					});
-}
+}/*}}}*/
 
 Pimp.toggledebug = function() {/*{{{*/
 	var d = document.getElementById("debug");

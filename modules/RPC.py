@@ -64,9 +64,7 @@ class RPC:
 		self.respond("ok")
 
 	def call_loadstream(self, params):
-		print "Loadstream called"
 		params = params[0]
-		print params
 		stream = self.streamlist[params["stream"]]
 		
 		streaminfo = {

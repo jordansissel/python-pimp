@@ -42,10 +42,7 @@ class RPC:
 		name = params[0]["stream"]
 		stream = self.streamlist[name]
 		stream.nextsong()
-		self.respond({ 
-						 "songdata": stream.song,
-						 "streamname": name,
-						})
+		self.call_loadstream(params)
 
 	def call_list_streams(self, params):
 		results = {}

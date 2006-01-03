@@ -1,5 +1,6 @@
 var interface_type = "workstation";
 
+
 /*XXX: SHOW PROPERTIES
 for (var i in results) {
 	debug("td: " + i + ": " + results[i]);
@@ -40,11 +41,17 @@ Pimp.init = function() {/*{{{*/
 
 	searchbutton.addEventListener(clickevent, Pimp.dosearch, false);
 
-	var home = document.getElementById("button_home");
-	Pimp.addbutton(home, Pimp.click_home);
+	var home = mkelement("img"); //document.getElementById("button_home");
+	home.src = "/static/images/pimp-home.png";
+	home.id = "button_home";
+	home.title = "Show the streamlist page";
+	Pimp.addbutton(home, Pimp.click_home, document.getElementById("titlebar"));
 
-	var debugbut = document.getElementById("button_debug");
-	Pimp.addbutton(debugbut, Pimp.toggledebug);
+	var debugbut = mkelement("img"); //document.getElementById("button_debug");
+	debugbut.src = "/static/images/debug.png";
+	debugbut.id = "button_debug";
+	debugbut.title = "Toggle debugging. GET IT?! LINUX == BUG. AHAH.. FUNNY :(";
+	Pimp.addbutton(debugbut, Pimp.toggledebug, document.getElementById("titlebar"));
 
 }/*}}}*/
 
@@ -337,6 +344,10 @@ Pimp.getStreamPane = function(params) {/*{{{*/
 		button_prev.src="/static/images/pimp-prev.png";
 		button_prev.id = "button_prev";
 
+		var button_stream = mkelement("img");
+		button_stream.src = "/static/images/pimp-musiclist.png";
+		button_stream.id = "button_stream";
+
 		document.getElementById("container").appendChild(streamdoc);
 
 		/* Hide it for now */
@@ -345,6 +356,7 @@ Pimp.getStreamPane = function(params) {/*{{{*/
 		Pimp.waitfor(streamdoc.style, "display", "block", function() {
 			Pimp.addbutton(button_next, Pimp.click_nextsong, titlebar);
 			Pimp.addbutton(button_prev, Pimp.click_prevsong, titlebar);
+			Pimp.addbutton(button_stream, function() {}, document.getElementById("titlebar"));
 		})
 	}
 
@@ -411,7 +423,7 @@ Pimp.showSearchResults = function(params) {/*{{{*/
 		delete_children(d);
 	}
 
-	d.style.border = "1px solid black";
+	//d.style.border = "1px solid black";
 	d.style.backgroundColor = "#EFF4FF";
 
 	var table = mkelement("table");
@@ -437,7 +449,7 @@ Pimp.showSearchResults = function(params) {/*{{{*/
 	results.id = "resultspage";
 	newqueue.id = "queuepage";
 
-	var h = (getOffset(document.body, "height") - getOffset(results, "top") - 150) + "px";
+	var h = (getOffset(document.body, "height") - 150) + "px";
 	results.style.border = "1px solid black";
 	newqueue.style.border = "1px solid black";
 
@@ -459,7 +471,7 @@ Pimp.showSearchResults = function(params) {/*{{{*/
 	var enq = mkelement("img");
 	enq.src="/static/images/pimp-enqueue.png";
 	enq.id="enqueuebutton";
-	Pimp.addbutton(enq, Pimp.click_enqueue);
+	Pimp.addbutton(enq, Pimp.click_enqueue, document.getElementById("titlebar"));
 
 }/*}}}*/
 
@@ -519,17 +531,23 @@ Pimp.addbutton = function(obj, func, parent) {/*{{{*/
 	if (!Pimp.buttonoffset[parent])
 		Pimp.buttonoffset[parent] = 0;
 
+	obj.style.display = "none";
+	parent.appendChild(obj);
+	obj.addEventListener("load", function() { Pimp._addbutton(obj, parent, func); }, false);
+	debug("Waiting for load: " + obj.src);
+	parent.appendChild(obj);
+
+}/*}}}*/
+
+Pimp._addbutton = function(obj, parent, func) {
 	obj.style.cursor = "pointer";
 	obj.style.width = "0px";
 	obj.style.height = "0px";
+	debug("Parent: " + parent.id + " / " + parent.tagName + " / " + Pimp.buttonoffset[parent]);
 	obj.style.top = (getOffset(parent, "top") + (obj.naturalHeight/2)) + "px";
 	obj.style.left = (getOffset(parent, "width") - Pimp.buttonoffset[parent] - (obj.naturalWidth / 2)) + "px";
 	obj.style.position = "absolute";
 	obj.style.display = "block";
-
-
-	/* Wait for the image to load? */
-	while (!obj.naturalHeight);
 
 	if (typeof(func) == "function")
 		obj.addEventListener(clickevent, function(e) {
@@ -537,13 +555,11 @@ Pimp.addbutton = function(obj, func, parent) {/*{{{*/
 									func(e);
 									}, false);
 	else
-		debug("click func for " + obj.id + " not a function");
+		debug("click func for " + obj.id + " not a function. :: " + func);
+		
 
-	setTimeout(function() {
-		Effect.Zoom(obj, 300, {'appear':1, "width": obj.naturalWidth, "height": obj.naturalHeight});
-	}, 20);
+	setTimeout(function() { Effect.Zoom(obj, 300, {'appear':1, "width": obj.naturalWidth, "height": obj.naturalHeight}); }, 20);
 
-	parent.appendChild(obj);
 	Pimp.buttonoffset[parent] += obj.naturalWidth;
 
 	if (!Pimp.buttons)
@@ -551,8 +567,7 @@ Pimp.addbutton = function(obj, func, parent) {/*{{{*/
 
 	if (!Pimp.buttons[parent])
 		Pimp.buttons[parent] = {};
-
-}/*}}}*/
+};
 
 Pimp.removebutton = function(obj) {/*{{{*/
 	Effect.Fade(obj, 500, function() { 

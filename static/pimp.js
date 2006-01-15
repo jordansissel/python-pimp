@@ -24,7 +24,7 @@ Pimp.init = function() {/*{{{*/
 
 	Pimp.wait = {};
 	Pimp.liststreams();
-	//Pimp.interval(Pimp.liststreams, 5000)
+	Pimp.interval(Pimp.liststreams, 3000)
 
 	setTimeout(function() { Pimp.initdone = 1 }, 3000);
 
@@ -171,12 +171,11 @@ Pimp.updateStreamList = function(params) {/*{{{*/
 	var idx = 0;
 	var i;
 
-	var updates = [];
+	var updates = {};
 
-	//debug("Updating streams");
 	for (i in params) {
 		Pimp.updateStreamListEntry(i, params[i], idx);
-		updates.push("stream:" + i);
+		//updates.push("stream:" + i);
 		idx++;
 	}
 
@@ -188,7 +187,36 @@ Pimp.updateStreamListEntry = function(name, data, idx) {/*{{{*/
 
 	Pimp.streams[name].updatesong(data.song);
 	Pimp.streams[name].updateinfo(data.streaminfo);
-	Pimp.updateStreamListElement(name, idx);
+
+	var streamname = name.substr(8);
+	var stream = Pimp.streams[name];
+
+	var streamitem = $("#streamlist");
+	if (streamitem.find("#"+streamname).size() == 0) {
+		$C("<tr id='"+streamname+"'><td>ph1</td><td>ph2</td><td>ph3</td></tr>")
+			//.find("tr").each(function() { this.id = streamname; }).end()
+			.appendTo("#streamlist tbody");
+		$("#streamlist tr:gt(0):even").addClass("evenrow");
+		$("#streamlist tr:gt(0):odd").addClass("oddrow");
+		$("#streamlist tr").find("td:not(:first)").style("borderLeft", "1px solid black");
+		stream.jquery = $("#streamlist #"+streamname);
+	}
+
+	//debug("Jquery: " + Pimp.streams[name].jquery.size());
+	//debug("Jquery2: " + Pimp.streams[name].jquery.get(0));
+	var currentsong = Pimp.prettysong(stream.currentsong);
+
+	/* Only update if necessary */
+	if (stream.currentsong.playid != stream.lastid) {
+		// Update this particular entry */
+		stream.jquery.html({
+			 "td:nth(0)": name,
+			 "td:nth(1)": currentsong,
+			 "td:nth(2)": Pimp.streams[name].numclients
+												 })
+		stream.lastid = stream.currentsong.playid;
+	}
+
 }/*}}}*/
 
 Pimp.updateStreamListElement = function(name, idx) {/*{{{*/
@@ -197,14 +225,24 @@ Pimp.updateStreamListElement = function(name, idx) {/*{{{*/
 	var currentsong = Pimp.prettysong(stream.currentsong);
 	var basename = "stream:" + name;
 
-	$C("<tr><td>foo bar baz</td><td></td><td></td></tr>")
-		.html({
-			"td:nth(0)": name.substr(8),
-			"td:nth(1)": currentsong,
-			"td:nth(2)": stream.numclients
-			})
-	.appendTo("#streamlist");
+	var name= name.substr(8);
+	var streamitem = $("#streamlist #"+name);
 
+	if (streamitem.size() == 0) {
+		$C("<tr><td>foo bar baz</td><td></td><td></td></tr>")
+		.find("tr").each(function() { this.id = name; }).end()
+		.appendTo("#streamlist tbody");
+
+		// XXX: Is this necessary?
+		streamitem = $("#streamlist #"+name);
+	}
+
+	/* Update the table */
+	streamitem.html({
+				"td:nth(0)": name,
+				"td:nth(1)": currentsong,
+				"td:nth(2)": stream.numclients
+		})
 	$("#streamlist tr:gt(0):even").addClass("evenrow");
 	$("#streamlist tr:gt(0):odd").addClass("oddrow");
 	$("#streamlist tr").find("td:not(:first)").style("borderLeft", "1px solid black");

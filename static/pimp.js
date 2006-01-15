@@ -257,7 +257,7 @@ Pimp.updateStreamListElement = function(name, idx) {/*{{{*/
 
 		streamname.style.width="8em";
 
-		streamrow.className = (idx % 2) ? "even" : "odd";
+		//streamrow.className = (idx % 2) ? "even" : "odd";
 
 		var tmpfunc = function(tag, val){
 			var el = mkelement(tag);
@@ -341,7 +341,7 @@ Pimp.getStreamPane = function(params) {/*{{{*/
 		button_next.id = "button_next";
 
 		var button_prev = mkelement("img");
-		button_prev.src="/static/images/pimp-prev.png";
+		//button_prev.src="/static/images/pimp-prev.png";
 		button_prev.id = "button_prev";
 
 		var button_stream = mkelement("img");
@@ -353,11 +353,11 @@ Pimp.getStreamPane = function(params) {/*{{{*/
 		/* Hide it for now */
 		streamdoc.style.display="none";
 
-		Pimp.waitfor(streamdoc.style, "display", "block", function() {
+		//Pimp.waitfor(streamdoc.style, "display", "block", function() {
 			Pimp.addbutton(button_next, Pimp.click_nextsong, titlebar);
 			Pimp.addbutton(button_prev, Pimp.click_prevsong, titlebar);
 			Pimp.addbutton(button_stream, function() {}, document.getElementById("titlebar"));
-		})
+		//})
 	}
 
 	Pimp.updateStreamInfo(params);

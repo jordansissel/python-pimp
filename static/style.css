@@ -48,6 +48,10 @@ input[type="submit"]:hover, input[type="button"]:hover {
 	padding-right: 3px;
 }
 
+#streamlist table:nth-child(even) {
+	background-color: green;
+}
+
 #streamlist table tr td {
 	padding: 1px;
 	padding-left: 3px;

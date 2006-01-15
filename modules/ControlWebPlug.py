@@ -9,5 +9,5 @@ class ControlWebPlug(Plug):
 		r.end_headers()
 
 		if r.command == "GET":
-			self.sendfile("static/index.html")
+			self.sendfile("static/layout.html")
 

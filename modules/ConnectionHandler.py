@@ -36,7 +36,7 @@ class ConnectionHandler(Thread):
 
 		handlers = {
 			'404': Error404Plug,
-			'': RedirectPlug,
+			'': ControlWebPlug,
 			'control': ControlWebPlug,
 			'xmlrpc': ControlXMLRPCPlug,
 			'json': JSONRPCPlug,

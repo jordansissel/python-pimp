@@ -48,10 +48,6 @@ input[type="submit"]:hover, input[type="button"]:hover {
 	padding-right: 3px;
 }
 
-#streamlist table:nth-child(even) {
-	background-color: green;
-}
-
 #streamlist table tr td {
 	padding: 1px;
 	padding-left: 3px;
@@ -79,11 +75,16 @@ input[type="submit"]:hover, input[type="button"]:hover {
 	border-bottom: 1px solid black;
 }
 
-#streamlist table tr.even {
+.evenrow {
+	padding-left: .5em;
+	padding-right: .5em;
 	background-color: #E8E8EF;
+
 }
 
-#streamlist table tr.odd {
+.oddrow {
+padding-left: .5em;
+padding-right: .5em;
 	background-color: #D8D8DF;
 }
 

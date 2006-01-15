@@ -1,6 +1,5 @@
 var interface_type = "workstation";
 
-
 /*XXX: SHOW PROPERTIES
 for (var i in results) {
 	debug("td: " + i + ": " + results[i]);
@@ -25,7 +24,7 @@ Pimp.init = function() {/*{{{*/
 
 	Pimp.wait = {};
 	Pimp.liststreams();
-	Pimp.interval(Pimp.liststreams, 3000)
+	//Pimp.interval(Pimp.liststreams, 5000)
 
 	setTimeout(function() { Pimp.initdone = 1 }, 3000);
 
@@ -40,18 +39,6 @@ Pimp.init = function() {/*{{{*/
 		}, true);
 
 	searchbutton.addEventListener(clickevent, Pimp.dosearch, false);
-
-	var home = mkelement("img"); //document.getElementById("button_home");
-	home.src = "/static/images/pimp-home.png";
-	home.id = "button_home";
-	home.title = "Show the streamlist page";
-	Pimp.addbutton(home, Pimp.click_home, document.getElementById("titlebar"));
-
-	var debugbut = mkelement("img"); //document.getElementById("button_debug");
-	debugbut.src = "/static/images/debug.png";
-	debugbut.id = "button_debug";
-	debugbut.title = "Toggle debugging. GET IT?! LINUX == BUG. AHAH.. FUNNY :(";
-	Pimp.addbutton(debugbut, Pimp.toggledebug, document.getElementById("titlebar"));
 
 }/*}}}*/
 
@@ -193,22 +180,6 @@ Pimp.updateStreamList = function(params) {/*{{{*/
 		idx++;
 	}
 
-	// Blow away old streams that aren't listed anymore
-	var table = document.getElementById("streamlist_table");
-	for (i = 0; i < table.childNodes.length; i++) {
-		var el = table.childNodes[i];
-		if (el.id) {
-			var found = 0
-				for (var x = 0; x < updates.length && !found; x++) {
-					if (updates[x] == el.id)
-						found = 1;
-				}
-
-			if (!found)
-				table.removeChild(el);
-		}
-	}
-
 }/*}}}*/
 
 Pimp.updateStreamListEntry = function(name, data, idx) {/*{{{*/
@@ -223,74 +194,22 @@ Pimp.updateStreamListEntry = function(name, data, idx) {/*{{{*/
 Pimp.updateStreamListElement = function(name, idx) {/*{{{*/
 	var stream = Pimp.streams[name];
 
-	var list = document.getElementById("streamlist");
-	var table = document.getElementById("streamlist_table");
-	var streamentry = document.getElementById("stream:" + name);
-
 	var currentsong = Pimp.prettysong(stream.currentsong);
 	var basename = "stream:" + name;
-	if (streamentry) {
-		//XXX; Put this in an Interface class/objecty thing?
-		var songelement  = document.getElementById(basename + ":song");
-		var clientselement  = document.getElementById(basename + ":clients");
 
-		if (currentsong == songelement.childNodes[0].nodeValue)
-			return;
+	$C("<tr><td>foo bar baz</td><td></td><td></td></tr>")
+		.html({
+			"td:nth(0)": name.substr(8),
+			"td:nth(1)": currentsong,
+			"td:nth(2)": stream.numclients
+			})
+	.appendTo("#streamlist");
 
-		var newsongel = mkelement("div");
-		newsongel.id = basename + ":song";
+	$("#streamlist tr:gt(0):even").addClass("evenrow");
+	$("#streamlist tr:gt(0):odd").addClass("oddrow");
+	$("#streamlist tr").find("td:not(:first)").style("borderLeft", "1px solid black");
 
-		newsongel.appendChild(mktext(currentsong));
-		newsongel.style.display="none";
-
-		songelement.parentNode.appendChild(newsongel);
-
-		Effect.Fade(songelement, 1000, function () {
-						songelement.parentNode.removeChild(songelement);
-						Effect.Appear(newsongel, 1000);
-						});
-	} else {
-		var streamrow = mkelement("tr");
-		var streamname = mkelement("td");
-		var streamsong = mkelement("td");
-		var streamclients = mkelement("td");
-
-		streamname.style.width="8em";
-
-		//streamrow.className = (idx % 2) ? "even" : "odd";
-
-		var tmpfunc = function(tag, val){
-			var el = mkelement(tag);
-			el.appendChild(mktext(val));
-			return el;
-		};
-
-		var namediv = tmpfunc("div", name.substr(8));
-		var songdiv = tmpfunc("div", currentsong);
-		var clientdiv = tmpfunc("div", stream.numclients);
-
-		streamname.appendChild(namediv);
-		streamsong.appendChild(songdiv);
-		streamclients.appendChild(clientdiv);
-		streamrow.id = basename;
-		namediv.id = basename + ":name";
-		songdiv.id = basename + ":song";
-		clientdiv.id = basename + ":clients";
-
-		streamrow.addEventListener(clickevent, Pimp.drilldown_stream, false);
-
-		streamrow.appendChild(streamname);
-		streamrow.appendChild(streamsong);
-		streamrow.appendChild(streamclients);
-
-		if (Pimp.initdone) {
-			streamrow.style.opacity = 0;
-			Effect.Appear(streamrow, 1000)
-		}
-
-		// Append to table
-		table.appendChild(streamrow)
-	}
+	//streamrow.addEventListener(clickevent, Pimp.drilldown_stream, false);
 }/*}}}*/
 
 Pimp.showStreamPane = function(params) {/*{{{*/
@@ -518,65 +437,6 @@ Pimp.dosearch = function() {/*{{{*/
 
 	Pimp.showpane("search_pane",1);
 	callrpc("search", {any: q}, Pimp.callback_search);
-}/*}}}*/
-
-Pimp.addbutton = function(obj, func, parent) {/*{{{*/
-
-	if (!Pimp.buttonoffset)
-		Pimp.buttonoffset = {};
-
-	if (!parent)
-		parent = document.body;
-
-	if (!Pimp.buttonoffset[parent])
-		Pimp.buttonoffset[parent] = 0;
-
-	obj.style.display = "none";
-	parent.appendChild(obj);
-	obj.addEventListener("load", function() { Pimp._addbutton(obj, parent, func); }, false);
-	debug("Waiting for load: " + obj.src);
-	parent.appendChild(obj);
-
-}/*}}}*/
-
-Pimp._addbutton = function(obj, parent, func) {
-	obj.style.cursor = "pointer";
-	obj.style.width = "0px";
-	obj.style.height = "0px";
-	debug("Parent: " + parent.id + " / " + parent.tagName + " / " + Pimp.buttonoffset[parent]);
-	obj.style.top = (getOffset(parent, "top") + (obj.naturalHeight/2)) + "px";
-	obj.style.left = (getOffset(parent, "width") - Pimp.buttonoffset[parent] - (obj.naturalWidth / 2)) + "px";
-	obj.style.position = "absolute";
-	obj.style.display = "block";
-
-	if (typeof(func) == "function")
-		obj.addEventListener(clickevent, function(e) {
-									Effect.ZoomOut(this, 300);
-									func(e);
-									}, false);
-	else
-		debug("click func for " + obj.id + " not a function. :: " + func);
-		
-
-	setTimeout(function() { Effect.Zoom(obj, 300, {'appear':1, "width": obj.naturalWidth, "height": obj.naturalHeight}); }, 20);
-
-	Pimp.buttonoffset[parent] += obj.naturalWidth;
-
-	if (!Pimp.buttons)
-		Pimp.buttons = {};
-
-	if (!Pimp.buttons[parent])
-		Pimp.buttons[parent] = {};
-};
-
-Pimp.removebutton = function(obj) {/*{{{*/
-	Effect.Fade(obj, 500, function() { 
-					var parent = obj.parentNode;
-					//debug("p: " + parent.tagName);
-					Pimp.buttonoffset[parent] -= obj.naturalWidth;
-					debug("newoffset: " + Pimp.buttonoffset[parent]);
-					parent.removeChild(obj);
-					});
 }/*}}}*/
 
 Pimp.toggledebug = function() {/*{{{*/

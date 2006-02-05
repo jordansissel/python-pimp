@@ -5,6 +5,12 @@ function Stream(name) {
 	this.queue = []
 	this.recentplays = [];
 	this.maxrecent = 5;
+	this.name = name;
+}
+
+Stream.prototype.update = function(data) {
+	if (data.song) this.updatesong(data.song);
+	if (data.streaminfo) this.updateinfo(data.streaminfo);
 }
 
 Stream.prototype.updatesong = function(song) {

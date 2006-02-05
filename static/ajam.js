@@ -186,15 +186,11 @@ function delete_children(element, recursive) {
 var debugcnt = 0
 function debug(val) {
 	debugcnt++;
-	var list = document.getElementById("debug");
-	var foo = mkelement("div");
-	var text = mktext(debugcnt + ": " + val);
-	foo.style.fontWeight="bold";
-	foo.appendChild(text);
-	list.appendChild(foo);
+	$C("<div>" + debugcnt + ": " + val+"</div>").appendTo("#debug");
 }
 
 function cleardebug() {
-	delete_children(document.getElementById("debug"))
+	//$("#debug").get(0).childNodes = [];
+	//delete_children(document.getElementById("debug"))
 }
 

@@ -1,0 +1,22 @@
+CLIENTS:
+
+play
+
+pause
+
+stop
+
+next
+
+prev ???
+
+info - 
+	Returns information about the currently playing song in the form of:
+INFO SONG_INDEX TIME_PLAYED
+	
+	SONG_INDEX is an index that can be looked up in the playlist
+	TIME_PLAYED is in seconds
+
+set <album|title|artist>
+
+playlist [unixtime]

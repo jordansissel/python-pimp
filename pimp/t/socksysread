@@ -1,0 +1,14 @@
+#!/usr/bin/perl
+
+use Socket;
+
+socket(FOO, PF_INET, SOCK_STREAM, getprotobyname('tcp'));
+connect(FOO, sockaddr_in("3242", inet_aton("whack.csh.rit.edu"))) or die("Failed connect(): $!");
+
+print FOO "Hello!\r\n\004";
+while (sysread(FOO, $buffer, 512, 0)) {
+#while (<FOO>) {
+	#print $_;
+	print $buffer;
+}
+close(FOO);

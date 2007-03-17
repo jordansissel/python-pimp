@@ -1,0 +1,7 @@
+#!/usr/bin/perl
+
+use HTTP::Request;
+
+$foo = HTTP::Request->new(GET => "http://www.google.com/");
+
+print $foo->as_string() . "\n";

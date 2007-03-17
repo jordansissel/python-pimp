@@ -1,0 +1,813 @@
+#!/usr/bin/perl 
+# $Id$ {{{
+# (?:Perl|Pretty)i?\sMusic\sPlayer
+# or...
+# Pimp Is a Music Player
+# or...
+# PIMP is more pimpin'
+#
+# Anyhoo... on with the perl!
+# }}}
+#
+# la
+# awet
+# awet
+#
+
+# use perl; {{{
+use strict;
+use warnings;
+
+use IO::Handle;
+use IO::Select;
+use IO::Socket;
+use POSIX;
+
+#use Time::HiRes qw(gettimeofday);
+use Storable;
+
+#use Audio::Mad qw(:all);
+#use MP3::Tag;
+
+BEGIN {
+	# Call shutdown() when we get SIGINT SIGTERM SIGHUP or __DIE__
+	map { $SIG{$_} = \&shutdown } qw(INT TERM HUP __DIE__);
+
+	# Ignore sigpipe, default action is to throw self off cliff.
+	#$SIG{PIPE} = sub { return; };
+}
+
+my $MAXBUFSIZE = 65536;       # mp3 inbound buffer
+my $BUFSIZE = 1024;          # mp3 to-decode buffer
+my $BUFFER_ERROR_RATE = 5;    # Errors per 5 seconds or osmething
+my $CLIENTWRITESIZE = 8192;   # bytes to send to control clients per loop
+my $METAINT = 16384;          # Shoutcast metadata interval
+
+my $pimp = {};
+#}}}
+
+# Protocol Numbers/Identifiers {{{
+
+use constant {
+
+	# States
+	STATE_PLAYING => 101,
+	STATE_PAUSED => 102,
+	STATE_STOPPED => 103,
+	
+	SEARCH_START => 201,
+	SEARCH_RESULT => 202,
+	SEARCH_END => 203,
+
+	QUEUE_START => 301,
+	QUEUE_ENTRY => 302,
+	QUEUE_END => 303,
+
+	SONG_BRIEFTITLE => 401,
+	SONG_TITLE => 402,
+	SONG_ARTIST => 403,
+	SONG_ALBUM => 404,
+	SONG_FILENAME => 405,
+	SONG_CURTIME => 406,
+
+	NEW_SONG => 501,
+
+}; #}}}
+
+# process_decode {{{
+# actually does the transmission of mp3 data
+sub process_decode() {
+	return unless ($pimp->{"state"} eq "playing");
+	my $ret = decode_current_mp3();
+
+	if ($ret == 0) {
+		play_to_clients();
+	} else {
+		signal_event("end_of_file");
+	}
+} #}}}
+
+# process_control {{{
+# Read from the control
+sub process_control() {
+	my $select = $pimp->{"control_select"};
+	foreach my $sock ($select->can_read(.05)) {
+		if ($sock == $pimp->{"control"}) {
+			# This is the control server, there's a new connection...
+			my $client = $sock->accept();
+			$select->add($client);
+			$pimp->{"control_clients"}->{$client} = $client;
+			$pimp->{"client_send_buffers"}->{"$sock"} = "";
+			print_to_client("$client", NEW_SONG, current_song_title());
+		} else {
+			# This is a client sending data
+			my $data;
+			my $buffer = \$pimp->{"client_buffers"}->{"$sock"};
+			my $recv = $sock->recv($data, POSIX::BUFSIZ, 0);
+
+			unless (defined($recv) && length($data)) {
+				# Drop the client
+				drop_client($sock);
+				next;
+			}
+
+			$$buffer .=  $data;
+
+			while ($$buffer =~ s!(.*)\n!!) {
+				my $line = $1;
+				next if ($line =~ m/^\s*$/);
+				handle_client_command($sock, $1);
+			}
+		}
+	}
+
+	foreach my $sock ($select->can_write(.05)) {
+		next if ($sock == $pimp->{"control"});
+		my $buffer = \$pimp->{"client_send_buffers"}->{"$sock"};
+		$$buffer |= "";
+
+		next if (length($$buffer) == 0);
+
+		my $bytes = syswrite($sock,$$buffer,$CLIENTWRITESIZE);
+		print "Sent $bytes to " . sock2addr($sock) . "\n";
+		substr($$buffer,0,$bytes) = "";
+	}
+} #}}}
+
+# process_http {{{
+# handles http stuffs
+sub process_http {
+	my $select = $pimp->{"http_select"};
+
+	foreach my $sock ($select->can_read(.05)) {
+		if ($sock == $pimp->{"http"}) {
+			# This is the control server, there's a new connection...
+			my $http = $sock->accept();
+			$select->add($http);
+		} else {
+			my $data;
+			my $buffer = \$pimp->{"http_buffers"}->{"$sock"};
+			my $recv = $sock->recv($data, POSIX::BUFSIZ, 0);
+
+			unless (defined($recv) && length($data)) {
+				# Drop the client
+				drop_http_client($sock);
+				next;
+			}
+
+			$$buffer .=  $data;
+
+			handle_http_request($sock) if ($$buffer =~ m/\r?\n\r?\n$/s);
+		}
+	}
+
+
+} #}}}
+
+# process_event {{{
+# Processes an event from the event queue.
+sub process_event {
+	my ($event, $args);
+	$event = shift(@{$pimp->{"eventqueue"}});
+	return unless ($event);
+
+	$args = $event->{"args"};
+	$event = $event->{"event"};
+
+	my ($callback) = grep { ($_ eq $event) } keys(%{$pimp->{"callbacks"}});
+
+	if ($callback) {
+		print "Calling back for $event\n";
+		$callback = $pimp->{"callbacks"}->{$callback};
+		$callback->($event) if (ref($callback) eq 'CODE');
+	} else {
+		print "No event handler for $event\n";
+	}
+
+	return;
+}
+# }}}
+
+# play_song {{{
+# Open the current file and make with the going.
+sub play_song(;$) {
+	my $song = shift || $pimp->{"current_song"};
+	my $file = $song->{"file"};
+	my $previous = $pimp->{"previous"};
+	my $fd = \$pimp->{"mp3fd"};
+
+	unshift(@$previous, $song);
+	splice(@{$pimp->{"output"}});
+	$pimp->{"buffered"} = "";
+	$pimp->{"buffer"} = "";
+	#$pimp->{"timer"}->reset();
+
+	if (-r $file) {
+		#get_tag($song);
+		unless (open($$fd, $file)) {
+			signal_event("open_failed");
+		} else {
+			$pimp->{"state"} = "playing" if ($pimp->{"state"} ne 'paused');
+			$pimp->{"current_song"} = $song;
+			print_to_client("BROADCAST", NEW_SONG, current_song_title());
+		}
+	} else {
+		signal_event("open_failed");
+	}
+
+} #}}}
+
+# read_playlist {{{
+# Reads the playlist file for data awesomeness
+sub read_playlist() {
+	my $file = "/home/psionic/foo.m3u";
+	my $idx = 0;
+	my %values;
+	print "Reading tags file...\n";
+
+	if (-r $pimp->{"tagfile"}) {
+		$pimp->{"playlist"} = retrieve($pimp->{"tagfile"});
+	}
+
+	print "Size: " . scalar(keys(%{$pimp->{"playlist"}})) . "\n";
+	print "Done\n";
+
+	%values = map { $_->{"file"} => 1 } values(%{$pimp->{"playlist"}});
+	
+	open(LIST, "<$file") or die("Failed trying to open $file");
+	while (my $line = <LIST>) {
+		chomp($line);
+		next if ($line =~ m/^#/);
+		next if (exists($values{$line}));
+
+		$idx++ while (exists($pimp->{"playlist"}->{"$idx"}));
+
+		$pimp->{"playlist"}->{"$idx"} = { id => $idx, file => $line };
+	}
+
+	$pimp->{"playlist_count"} = $idx;
+	print "Size: " . scalar(keys(%{$pimp->{"playlist"}})) . "\n";
+	close(LIST);
+} #}}}
+
+# drop_client {{{
+# Remove a client
+sub drop_client($;$) {
+	my $client = shift;
+	my $msg = shift || "Goodbye :)";
+	print sock2addr($client) . " disconnected\n";
+
+	if ($client->connected()) {
+		print $client "$msg\n";
+		close($client);
+	}
+	delete $pimp->{"control_clients"}->{"$client"};
+	$pimp->{"control_select"}->remove($client);
+} #}}}
+
+# drop_http_client {{{
+# Remove an http client
+sub drop_http_client($;$) {
+	my $client = shift;
+	my $msg = shift || "Goodbye :)";
+	print "REF: " . ref($client) . " / " . sock2addr($client) . " disconnected\n";
+	if ($client->connected()) {
+		#print $client "$msg\n";
+		print "Closing connection...\n";
+	}
+
+	delete $pimp->{"metaintleft"}->{"$client"};
+	delete $pimp->{"http_output_buffer"}->{$client};
+	delete $pimp->{"http_clients"}->{"$client"};
+	$pimp->{"http_select"}->remove($client);
+	$client->close();
+} #}}}
+
+# play_to_clients {{{
+# Grabs the next mp3 frame to send and then send it.
+sub play_to_clients() {
+	#my @clients = $pimp->{"http_select"}->can_write(.05);
+	my $select = $pimp->{"http_select"};
+
+	my @data = splice(@{$pimp->{"output"}}, 0, 10);
+	my ($hcnt,$bcnt) = (0,0); # Handle and overbuffered-count
+
+	foreach my $sock ($select->handles()) {
+		next if ($sock == $pimp->{"http"});
+
+		my $obuf = $pimp->{"http_output_buffer"}->{$sock};
+		push(@$obuf, @data) ;
+
+		if (scalar(@$obuf) > 5) {
+			$bcnt++;
+			#print "Chunks remaining for " . sock2addr($sock) . ": " . 
+				#scalar(@$obuf) . "\n";
+			splice(@$obuf, 300) if (scalar(@$obuf) > 300);
+		}
+		$hcnt++;
+
+		splice(@$obuf, 300) if (scalar(@$obuf) > 300);
+	} 
+
+	# If all buffers are overfull, stop decoding so http clients can catch up.
+	$pimp->{"halt_decoding"} = ($hcnt == $bcnt);
+
+	foreach my $sock ($select->can_write(.05)) {
+		next if ($sock == $pimp->{"http"}); 
+		next unless (exists($pimp->{"http_clients"}->{$sock}));
+
+		while (grep($sock, $select->can_write(0)) && scalar(@{$pimp->{"http_output_buffer"}->{$sock}}) > 0) {
+			#@data = splice(@{$pimp->{"http_output_buffer"}->{$sock}}, 0, 4);
+			(@data) = shift @{$pimp->{"http_output_buffer"}->{$sock}};
+
+			my $data = join('', @data);
+			if (length($data) > 0) {
+				# Inject metadata if we need to {{{
+					my $metaint = \$pimp->{"metaintleft"}->{"$sock"};
+					if (defined($$metaint)) {
+						# Check if we need to inject metadata
+						$$metaint -= length($data);
+						if ($$metaint <= 0) {
+							my $metadata = "";
+							if (defined($pimp->{"metatitle"}->{$sock}) && $pimp->{"metatitle"}->{$sock} eq current_song_title()) {
+								$metadata = "\0";
+							} else {
+								my $len;
+								$metadata .= "StreamTitle='" . current_song_title() . "';";
+								$metadata .= "StreamUrl='http://www.foo.com/bar';";
+								$len = (1 + int((length($metadata) + 1) / 16)) * 16;
+								$metadata .= chr(0) x ($len - length($metadata));
+
+								# Put the meta data in the proper place.
+								$metadata = chr(int($len / 16))  . $metadata;
+
+								#print "Metaint is: $$metaint\n";
+								#print "MetaLength is: $len / " . length($metadata) . "\n";
+								#print STDERR "META: $metadata\n\n\n";
+
+							}
+							substr($data,length($data) + $$metaint, 0) = $metadata;
+
+							$pimp->{"metatitle"}->{$sock} = current_song_title();
+							# Set next interval to METAINT minus the overflow
+							$$metaint = $METAINT + $$metaint;
+						}
+					} #}}}
+
+					if ($sock->connected()) {
+						#print "Sending " . length($data) . "B to " . sock2addr($sock) . "\n";
+						syswrite($sock,$data);
+					} else {
+						drop_http_client($sock);
+					}
+			}
+		}
+	}
+
+	#print "[$cnt] / " . scalar($select->handles()) . " / Size of to-be-printed: " . scalar(@data) . "\n";
+
+	splice(@{$pimp->{"output"}}, 0, 10);
+} #}}}
+
+# decode_current_mp3 {{{
+# Pulls out the next few frames of mp3
+sub decode_current_mp3() {
+	my $buffer = \$pimp->{"buffer"};
+	my $blen = length($$buffer);
+	my $output = $pimp->{"output"};
+
+	# Sooooo let's go ahead and not decode if the http buffers are overloaded
+	return 0 if ($pimp->{"halt_decoding"});
+
+	$$buffer |= "";
+
+	return 0 if (scalar(@$output) > 20);
+	if (length($$buffer) < $MAXBUFSIZE) {
+		return 1 unless (feed_prebuffer());
+	}
+
+	# Grab up to 10 chunks of mp3 data
+	for (1 .. 10) {
+		my $data = substr($$buffer, 0, $BUFSIZE);
+		substr($$buffer, 0, $BUFSIZE) = "";
+
+		# Push the next frame onto the output bufferness
+		push(@{$output}, $data);
+	}
+	return 0;
+
+} #}}}
+
+# feed_prebuffer {{{ 
+sub feed_prebuffer() {
+	my $b;
+	my $blen = length($pimp->{"buffer"});
+
+	# Don't bother reading if we can't read anyway...
+	return 1 if ($blen == $MAXBUFSIZE);
+
+	$b = sysread($pimp->{"mp3fd"}, $pimp->{"buffer"}, 
+					 $MAXBUFSIZE - $blen, $blen);
+	print "Feeding prebuffer: " . length($pimp->{"buffer"}) . " / $b\n";
+	return $b;
+} #}}}
+
+# handle_client_command {{{
+# This is called when a client sends a message to the server
+# Takes a socket and a full line, does things.
+sub handle_client_command($$) {
+	my ($sock, $command, $args);
+	($sock,$command) = @_;
+
+	$command =~ s/^\s*(.*)\s*$/$1/;
+
+	# Neat hack to make $command and $args default to empty 
+	# strings if they aren't passed in.
+	($command, $args) = (split(/\s+/, $command, 2), "", "");
+
+	# Normalize the data
+	$command = "command_" . lc($command);
+	$args =~ s/\s+$//;
+
+	print sock2addr($sock) . ": '$command $args'\n";
+
+	#print "Sock: $sock\nCommand: $command\nArgs: $args\n";
+
+	# Regex to allow for term shortening 
+	my $creg = qr/(?i)^\Q$command\E/;
+
+	my ($callback) = grep { ($_ =~ $creg) } keys(%{$pimp->{"callbacks"}});
+
+	if ($callback) {
+		print "Callback: $callback\n";
+		$command = $callback;
+		$callback = $pimp->{"callbacks"}->{$callback};
+		$callback->($sock,$command,$args) if (ref($callback) eq 'CODE');
+	}
+
+} #}}}
+
+# handle_http_request {{{
+# Parses the http request from a new http client. 
+# Does magic like determining whether or not they want shoutcast metadata or not
+sub handle_http_request($) {
+	my $sock = shift;
+	my $buffer = $pimp->{"http_buffers"}->{"$sock"};
+	my $response = "ICY 200 OK\r\n";;
+
+	$response .= "icy-url: http://whack.csh.rit.edu/this/is/a/lie\r\n";
+	$response .= "icy-name: I like music!\r\n";
+
+	print sock2addr($sock) . " sent:\n";
+	print $buffer . "\n";
+	print sock2addr($sock) . " requested:\n" . $buffer . "\n";
+	foreach my $line (split(/\r?\n/, $buffer)) {
+		my ($key,$val) = split(/:\s*/, $line, 2);
+		if ($key eq 'Icy-MetaData') {
+			print "Client " . sock2addr($sock) . " wants metadata!\n";
+			$pimp->{"shoutcast"}->{"$sock"} = $val;
+			$response .= "icy-metaint: $METAINT\r\n";
+			#$response .= "icy-pub: 1\r\n";
+			$pimp->{"metaintleft"}->{"$sock"} = $METAINT;
+		}
+	}
+	$response .= "\r\n";
+
+	print "Sending to " . sock2addr($sock) . ":\n";
+	print $response . "\n-\n";
+
+	print $sock $response;
+
+	$pimp->{"http_clients"}->{$sock} = $sock;
+	$pimp->{"http_output_buffer"}->{$sock} = [];
+	delete $pimp->{"http_buffers"}->{"$sock"};
+} #}}}
+
+# shutdown {{{
+# Runs some cleanup and other exit routines
+sub shutdown {
+	print STDERR (@_);
+	foreach my $client (values(%{$pimp->{"control_clients"}})) {
+		drop_client($client, "Server is shutting down...");
+	}
+	exit(0);
+} #}}}
+
+# sock2addr {{{
+# Takes an IO::Socket::INET and returns "host:port"
+sub sock2addr($) {
+	my $sock = shift;
+	return '<unknown>' if (ref($sock) ne 'IO::Socket::INET');
+
+	return $sock->peerhost() . ":" . $sock->peerport();
+} #}}}
+
+# setup_server {{{
+# Set up the server-side sockets and selectors
+sub setup_server {
+	print "Starting server...\n";
+
+	$pimp->{"http"} = IO::Socket::INET->new(Proto => "tcp", LocalPort => "8080",
+														 Listen => SOMAXCONN, Reuse => 1);
+	$pimp->{"http_select"} = IO::Select->new($pimp->{"http"});
+	$pimp->{"http_clients"} = { };
+
+	$pimp->{"control"} = IO::Socket::INET->new(Proto => "tcp", LocalPort => "3242",
+															 Listen => SOMAXCONN, Reuse => 1);
+	$pimp->{"control_select"} = IO::Select->new($pimp->{"control"});
+	$pimp->{"control_clients"} = { };
+} #}}}
+
+# setup_callbacks {{{
+# Defines which commands call which functions
+sub setup_callbacks() {
+	my $cm = $pimp->{"callbacks"};
+
+	#print "Setting up callbacks...\n";
+
+	$cm->{"command_play"} = \&song_control;
+	$cm->{"command_pause"} = \&song_control;
+	$cm->{"command_stop"} = \&song_control;
+	$cm->{"command_next"} = \&song_control;
+	$cm->{"command_prev"} = \&song_control;
+	$cm->{"command_find"} = \&find;
+	$cm->{"command_queue"} = \&queue;
+	$cm->{"command_info"} = \&info;
+
+	$cm->{"open_failed"} = \&end_of_file;
+	$cm->{"end_of_file"} = \&end_of_file;
+
+	#print "Done\n";
+
+} #}}}
+
+# signal_event {{{
+# Takes a single string indicating the event thatithlii
+sub signal_event($;$) {
+	my ($signal,$args) = (@_, "");
+
+	#print "$signal / $args --- " . join(" / ", caller()) . "\n";
+	push(@{$pimp->{"eventqueue"}}, { event => $signal, args => $args } );
+} #}}}
+
+# song_control {{{
+#
+sub song_control() {
+	my ($sock, $event);
+	$sock = shift if (ref($_[0]) eq 'IO::Socket::INET');
+	$event = shift;
+
+	#print "SONG CONTROL!!! $event\n";
+
+	if ($event eq "command_play") {
+		if ($pimp->{"state"} ne "playing") {
+			print_to_client("BROADCAST", STATE_PLAYING . " playing");
+			$pimp->{"state"} = "playing";
+		}
+		if ($pimp->{"state"} =~ m/playing|stopped/) {
+			play_song();
+		}
+	} elsif ($event eq "command_pause") {
+		if ($pimp->{"state"} eq "playing") {
+			print_to_client("BROADCAST", STATE_PAUSED . " paused");
+			$pimp->{"state"} = "paused";
+		} else {
+			print_to_client("BROADCAST", STATE_PLAYING . " playing");
+			$pimp->{"state"} = "playing";
+		}
+	} elsif ($event eq "command_stop") {
+		print_to_client("BROADCAST", STATE_STOPPED . " stopped");
+		$pimp->{"state"} = "stopped";
+	} elsif ($event eq "command_next") {
+		# Pick a new song
+		my $playlist = $pimp->{"playlist"};
+		my $newsong;
+		if (defined($pimp->{"song_queue"}) && 
+			 (scalar(@{$pimp->{"song_queue"}}) > 0)) {
+			$newsong = shift(@{$pimp->{"song_queue"}});
+		}  else {
+			my @keys = keys(%$playlist);
+			$newsong = $playlist->{$keys[int(rand() * scalar(@keys))]};
+			#$newsong = $playlist[ (int(rand() * scalar(@playlist))) ];
+		}
+		print STDERR "New song: $newsong / " . $newsong->{"file"} . "\n";
+		play_song($newsong);
+	} elsif ($event eq "command_prev") {
+		my $previous = $pimp->{"previous"};
+		if (scalar(@$previous) > 0) {
+			if ($previous->[0]->{"id"} == $pimp->{"current_song"}->{"id"}) {
+				shift(@$previous);
+			}
+			play_song(shift(@$previous));
+		}
+	}
+} #}}}
+
+# info {{{
+# Tells the client what the current song is.
+sub info($$$) {
+		my ($sock,$command,$args) = @_;
+
+		#print_to_client($sock,$pimp->{"current_song"}->{"file"}. "\n");
+		#print_to_client($sock,$pimp->{"timer"});
+
+		print_to_client($sock, SONG_TITLE, $pimp->{"current_song"}->{"title"});
+		print_to_client($sock, SONG_ARTIST, $pimp->{"current_song"}->{"artist"});
+		print_to_client($sock, SONG_ALBUM, $pimp->{"current_song"}->{"album"});
+		print_to_client($sock, SONG_FILENAME, $pimp->{"current_song"}->{"file"});
+
+		##print_to_client($sock, "---> " . join(" / ", keys(%{$pimp->{"current_song"}})));
+		#print_to_client($sock, "---> " . join(" / ", values(%{$pimp->{"current_song"}})));
+
+		#print_to_client($sock, SONG_CURTIME, $pimp->{"current_song"}->{"title"});
+		SONG_TITLE => 402,
+		SONG_ARTIST => 403,
+		SONG_ALBUM => 404,
+		SONG_FILENAME => 405,
+		SONG_CURTIME => 406,
+	} #}}}
+
+# find {{{
+# Searches the playlist for matches to a query
+sub find($$$) {
+	my ($sock, $command, $args) = @_;
+
+	my @matches = values(%{$pimp->{"playlist"}});
+
+	foreach (split(/\s+/, $args)) {
+		my $a = $_;
+		@matches = grep($_->{"file"} =~ /\Q$a\E/i, @matches);
+	}
+
+	@{$pimp->{"jump_lists"}->{"$sock"}} = @matches;
+
+	print_to_client($sock, SEARCH_START, $args);
+	foreach (@matches) {
+		print_to_client($sock, SEARCH_RESULT, $_->{"id"} . " " . $_->{"file"});
+	}
+	print_to_client($sock, SEARCH_END, $args);
+
+	@{$pimp->{"jump_lists"}->{"$sock"}} = @matches;
+} #}}}
+
+# queue {{{
+# Takes a socket, command, and args
+# Queues up whatever's specified by $args
+sub queue($$$) {
+	my ($sock,$command,$args) = @_;
+
+	print "SADNESS '$args'\n";
+	if (length($args) == 0) {
+		print_to_client($sock, QUEUE_START);
+		map { print_to_client($sock, QUEUE_ENTRY, $_->{"file"}) } @{$pimp->{"song_queue"}};
+		print_to_client($sock, QUEUE_END);
+	} elsif ('shuffle' =~ m/^\Q$args\E/) {
+		my $arr = $pimp->{"song_queue"};
+		my $i = @$arr;
+		while ($i--) {
+			my $j = int(rand($i + 1));
+			@{$arr}[$i,$j] = @{$arr}[$j,$i];
+		}
+	} elsif ('all' =~ m/^\Q$args\E/) {
+		push(@{$pimp->{"song_queue"}}, @{$pimp->{"jump_lists"}->{"$sock"}})
+			if (ref($pimp->{"jump_lists"}->{"$sock"}) eq 'ARRAY');
+	} elsif ('clear' =~ m/^\Q$args\E/) {
+		splice(@{$pimp->{"song_queue"}});
+	} else {
+		foreach my $id (split(/\s+/,$args)) {
+			if (defined($pimp->{"playlist"}->{$id})) {
+				push(@{$pimp->{"song_queue"}}, $pimp->{"playlist"}->{$id});
+			}
+		}
+	}
+
+} #}}}
+
+# end_of_file {{{
+# end of file handler, currently just triggers the next song
+sub end_of_file {
+	#print "END OF FILE!?\n";
+	$pimp->{"current_song"} = {};
+	close($pimp->{"mp3fd"});
+	$pimp->{"state"} = "file_ended";
+	signal_event("command_next");
+} #}}}
+
+# print_to_client {{{
+# Takes to arguments, a socket and some data.
+# This puts data onto the queue to be sent to the specified control client
+sub print_to_client($$;$) {
+	my ($client,$data, $extra) = @_;
+	my @clients;
+
+	# If we're called like: print_to_client($sock,SOME_CONSTANT,"text")
+	$data .= " ". $extra if (defined($extra));
+
+	#print "Sending: $client / $data\n";
+
+	if ($client eq "BROADCAST") {
+		@clients = values(%{$pimp->{"control_clients"}});
+	} else {
+		push(@clients, $client);
+	}
+
+	$data .= "\n" unless (substr($data,-1,1) eq "\n");
+
+	foreach $client (@clients)  {
+		$pimp->{"client_send_buffers"}->{"$client"} .= $data;
+	}
+} #}}}
+
+# get_tag {{{
+# Takes an optional song hash. Uses current song if nothing is passed.
+#
+sub get_tag(;$) {
+	my $song = $pimp->{"current_song"} || shift;
+	return unless (defined($song) || ref($song) ne "HASH");
+	return if (exists($song->{"artist"}));
+
+	my $file = $song->{"file"};
+	#print "GETTING SONG: $song\n";
+	#print "---> " . join(" / ", keys(%{$song})) . "\n";
+	#print "---> " . join(" / ", values(%{$song})) . "\n";
+	my $id = MP3::Tag->new($file);
+	print "Song: $song\n";
+	print "File: $file\n";
+	return unless defined($id);
+
+	print "ID3: $id\n";
+	$id->get_tags();
+
+	$song->{"title"} = $id->title();
+	$song->{"artist"} = $id->artist();
+	$song->{"album"} = $id->album();
+
+	#store($pimp->{"playlist"}, $pimp->{"tagfile"});
+	$id->close();
+} #}}}
+
+# current_song_title {{{
+#
+sub current_song_title() {
+	my $song = $pimp->{"current_song"};
+
+	return "(" . $song->{"artist"} . ") " . $song->{"album"} . " - " . $song->{"title"};
+} #}}}
+
+# Commands {{{
+
+sub cmd_play($$$) {
+	signal_event("command_play");
+}
+
+sub cmd_pause($$$) {
+	signal_event("command_pause");
+}
+
+sub cmd_stop($$$) {
+	signal_event("command_stop");
+}
+
+sub cmd_next($$$) {
+	signal_event("command_next");
+}
+
+sub cmd_prev($$$) {
+signal-event("prev");
+}
+
+# }}}
+
+# Main programmy stuff {{{
+
+# We need a place to store the id3 tags we read.
+{
+	my $path = $ENV{HOME} . "/.pimp";
+	mkdir($path) if (! -d $path);
+	$pimp->{"tagfile"} = "$path/id3tags";
+}
+
+#$pimp->{"timer"} = new Audio::Mad::Timer();
+$pimp->{"state"} = "stopped";
+$pimp->{"output"} = [ ];
+$pimp->{"previous"} = [ ];
+$pimp->{"callbacks"} = { };
+
+#$pimp->{"sleep_timeleft"} = 0;
+#$pimp->{"sleep_timecheck"} = Time::HiRes::time();
+
+setup_server();
+setup_callbacks();
+read_playlist();
+signal_event("command_next");
+signal_event("command_play");
+
+while (1) {
+	#print "LOOP\n";
+	process_decode();
+	process_control();
+	process_http();
+	process_event();
+}
+
+# }}}

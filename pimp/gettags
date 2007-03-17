@@ -1,0 +1,20 @@
+#!/usr/bin/perl
+
+use Storable qw(store retrieve nstore );
+use Data::Dumper;
+
+use strict;
+
+my $hash;
+$hash = retrieve($ENV{HOME} . "/.pimp/id3tags");
+
+#nstore($hash, $ENV{HOME} . "/.pimp/tags");
+
+
+print Dumper($hash);
+#foreach (keys(%$hash)) {
+	#print "$_\n";
+	#print "\t" . $hash->{$_}->{"artist"} . "\n";
+	#print "\t" . $hash->{$_}->{"album"} . "\n";
+	#print "\t" . $hash->{$_}->{"title"} . "\n";
+#}

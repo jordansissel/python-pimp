@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+
+#use Ogg::Vorbis::Decoder;
+use Ogg::Vorbis;
+use Audio::Ao qw(:all);
+
+my $buffer;
+my $tbytes = 0;
+
+#my $ogg = Ogg::Vorbis::Decoder->open("$ARGV[0]");
+my $ogg = Ogg::Vorbis->new();
+
+
+if (defined($ARGV[0])) {
+	open(INPUT, "< $ARGV[0]") or die "Bar\n";
+} else {
+	open(INPUT, "<&STDIN") or die "Failed duping stdin\n";
+}
+print ">>> " . $ogg->open(INPUT) . "\n";
+
+initialize_ao;
+
+my $device = open_live(default_driver_id(), 16, 44100, 2, is_big_endian(), {});
+die("Unable to open sound device\n") unless defined($device);
+
+my $buffer = "x" x 4096;
+my $bytes = 0;
+my $bitstream = 0;
+while ( (my $bytes = $ogg->read($buffer,4096,is_big_endian(),2,1,$bitstream)) > 0) {
+	print "[2kBytes: $bytes    \n[0A";
+	#print "OK\n";
+	play($device,$buffer,$bytes);
+}
+
+close_ao($device);
+shutdown_ao;

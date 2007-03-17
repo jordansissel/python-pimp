@@ -1,0 +1,114 @@
+#!/usr/bin/perl
+
+use Audio::Mad qw(:all);
+use Audio::Ao qw(:all);
+use IO::Select;
+use IO::Handle;
+use Socket;
+use Symbol;
+use URI;
+
+use HTTP::Handle;
+
+my $stream   = new Audio::Mad::Stream();
+my $frame    = new Audio::Mad::Frame();
+my $synth    = new Audio::Mad::Synth();
+my $timer    = new Audio::Mad::Timer();
+my $resample = new Audio::Mad::Resample(44100, 22050);
+my $dither   = new Audio::Mad::Dither();
+
+my $fd = Symbol::gensym();
+print "Arg: " . $ARGV[0] . "\n";
+if (defined($ARGV[0])) {
+	my $file = $ARGV[0];
+	if ($file =~ m!^http:\/\/!) {
+		my $http = HTTP::Handle->new();
+		$http->uri($file);
+
+		$http->connect();
+
+		$fd = $http->fd();
+
+	} elsif ($file =~ m!^/!) {
+		open($fd,"< $file") or die ("Failed trying to open $file\n$!");
+	}
+} else {
+	print "Reading from stdin\n";
+	$fd = \*STDIN;
+	#open($fd, "<&STDIN") or die ("Failed dup()\n$!");
+}
+print "DONE\n";
+
+my $select = IO::Select->new($fd);
+my $BUFSIZE = 8192;
+
+my $buffer = '';
+my $tbytes = 0;
+
+
+my $time = time();
+#if (sysread($fd,$buffer,$BUFSIZE,0)) {
+	#$tbytes += length($buffer);
+	#print "Buffer read OK [$tbytes bytes read so far]\n";
+#} else {
+	#die("Unable to read from $fd!?\n$!\n");
+#}
+
+initialize_ao;
+
+
+my $device = open_live(default_driver_id(), 16, 22050, 2, is_big_endian(), {});
+die("Unable to open sound device\n") unless defined($device);
+my ($fsize);
+
+print "Prebuffering...\n";
+while (length($buffer) < 8192) {
+	sysread($fd, $buffer, $BUFSIZE, length($buffer)); 
+}
+
+$stream->buffer($buffer);
+
+FOO:
+while (1) {
+	if (length($buffer) < 65536) {
+		my $foo = sysread($fd, $buffer, $BUFSIZE, length($buffer));
+		if ($foo) {
+			print "$foo = sysread()\n";
+		}
+	}
+
+	if ($frame->decode($stream) == -1) {
+		next if ($stream->err_ok());
+		if ($stream->error == MAD_ERROR_BUFLEN || 
+			 $stream->error == MAD_ERROR_BUFPTR) {
+
+			# Make sure we don't drop the last frame fragment
+			#my $partial = substr($buffer, $stream->next_frame(), $BUFSIZE);
+			$buffer = substr($buffer, $stream->next_frame());
+			#print "Buffer length: " . length($buffer) . " / " . length($partial) ."\n";
+
+			#last if (sysread($fd, $buffer, $BUFSIZE - length($buffer), length($buffer)) == 0);
+
+			$tbytes += length($buffer);
+			$stream->buffer($buffer);
+			my $b = $tbytes / (time() - $time) if (time() - $time > 0);
+			print "Buffer read OK [$tbytes total | $b bytes/sec]\n";
+
+			redo FOO;
+		}
+
+		print STDERR "Fatal error\n";
+		last;
+	}
+	$fsize = ($stream->next_frame() - $stream->this_frame()) unless defined($fsize);
+	if ($fsize - 10 > ($stream->next_frame() - $stream->this_frame())) {
+		$oldbuf = substr($buffer,$stream->this_frame());
+	}
+
+	print "Length: " . $frame->duration() . " - Bytse: " . ($stream->next_frame() - $stream->this_frame()) . "\n";
+	$synth->synth($frame);
+	my $pcm = $dither->dither($resample->resample($synth->samples()));
+	#my $pcm = $dither->dither($synth->samples());
+
+	play($device,$pcm,length($pcm));
+}

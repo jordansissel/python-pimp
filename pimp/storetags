@@ -1,0 +1,64 @@
+#!/usr/bin/perl
+
+use MP3::Tag;
+use Storable qw(nstore);
+use strict;
+use warnings;
+use POSIX ":sys_wait_h";
+
+my %hashy;
+my $id = 0;
+open(FILES, "< $ENV{HOME}/foo.m3u") or die ($!);
+
+my $time = time() - 1;
+my @foo = <FILES>;
+
+my @list;
+my $total = scalar(@foo);
+
+rabble(\@foo);
+
+sub rabble {
+	my $razzle = shift;
+	foreach (@$razzle) {
+		next if (m/^#/);
+		chomp;
+
+		my $foo = $_;
+
+		my $t = time() - $time;
+		#if ($id % 50 == 0) {
+			printf("[%d][%d / %.2f/sec / %.2f%%] $id - %s\n",
+					 $$,
+					 $t, 
+					 $id / $t,
+					 ($id / scalar(@$razzle)) * 100, 
+					 substr($foo,0,80));
+		#}
+		my $tag = MP3::Tag->new($_);
+
+		next unless defined($tag);
+		my ($title, $track, $artist, $album, $comment, $year, $genre) = $tag->autoinfo();
+
+		$hashy{$id} = {
+			title => $title,
+			artist => $artist,
+			album => $album,
+			file => $foo,
+			id => $id,
+		};
+
+		$id++;
+		$tag = undef;
+	}
+
+	print "ALL DONE!!!\n";
+	print "Took " . (time() - $time) . " seconds\n\n";
+
+	$time = time();
+	print "Storing...\n";
+
+
+	nstore(\%hashy, $ENV{HOME} . "/.pimp/tags.$$");
+	print "Done - took " . (time() - $time) . " seconds\n";
+}
